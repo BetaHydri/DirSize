@@ -356,7 +356,7 @@ function Get-DirectorySize {
             Write-Host ""
         }
         
-        if ($shouldDisplay -and ($DisplayDepth -ne 1 -or $Level -eq 0)) {
+        if ($shouldDisplay) {
             # Format size for display
             $sizeFormatted = Format-Size $totalSize
             
