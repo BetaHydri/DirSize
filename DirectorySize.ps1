@@ -308,6 +308,24 @@ function Get-DirectorySize {
         # Start with files in current directory
         $totalSize = $fileSize
         
+        # Display directory information only if within display depth (or unlimited display)
+        $shouldDisplay = ($DisplayDepth -eq 0) -or ($Level -lt $DisplayDepth) -or ($Level -eq 0)
+        
+        # Stop progress indicator before any display to prevent interference
+        if ($shouldDisplay -and $Global:ProgressActive -eq $true) {
+            $Global:ProgressActive = $false
+            Write-Host "`b" -NoNewline  # Erase the spinner
+            Write-Host "Complete!" -ForegroundColor Green
+            Write-Host ""
+        }
+        
+        # Display current directory BEFORE processing subdirectories (but will show final size after)
+        if ($shouldDisplay) {
+            # We'll display after calculating total size, so store the display info for now
+            $directoryName = Split-Path $DirectoryPath -Leaf
+            $treePrefix = if ($Level -eq 0) { "" } else { Get-TreePrefix -Level $Level -IsLast $IsLast -ParentPrefixes $ParentPrefixes }
+        }
+        
         # Always process ALL subdirectories for accurate size calculation
         if ($directories -and $directories.Count -gt 0) {
             $dirCount = $directories.Count
@@ -326,9 +344,22 @@ function Get-DirectorySize {
                 
                 try {
                     # Prepare parent prefixes for next level
-                    $newParentPrefixes = $ParentPrefixes + @(
+                    # Use current directory's IsLast status to determine if we add vertical line or spaces
+                    $currentPrefix = if ($Level -eq 0) {
+                        # At root level, don't add any prefix
+                        ""
+                    }
+                    else {
+                        # At non-root levels, use the current directory's IsLast status
                         if ($IsLast) { "    " } else { "│   " }
-                    )
+                    }
+                    
+                    $newParentPrefixes = if ($Level -eq 0) {
+                        @()
+                    }
+                    else {
+                        $ParentPrefixes + @($currentPrefix)
+                    }
                     
                     # Always calculate subdirectory size, but control display depth
                     $subDirSize = Get-DirectorySize -DirectoryPath $dir.FullName -Level ($Level + 1) -MaxDepth $MaxDepth -DisplayDepth $DisplayDepth -RestrictedDirs $RestrictedDirs -ParentPrefixes $newParentPrefixes -IsLast $isLastDir -FastMode $FastMode
@@ -345,30 +376,16 @@ function Get-DirectorySize {
             }
         }
         
-        # Display directory information only if within display depth (or unlimited display)
-        $shouldDisplay = ($DisplayDepth -eq 0) -or ($Level -lt $DisplayDepth) -or ($Level -eq 0)
-        
-        # Stop progress indicator before any display to prevent interference
-        if ($shouldDisplay -and $Global:ProgressActive -eq $true) {
-            $Global:ProgressActive = $false
-            Write-Host "`b" -NoNewline  # Erase the spinner
-            Write-Host "Complete!" -ForegroundColor Green
-            Write-Host ""
-        }
-        
+        # Now display the directory with the correct total size
         if ($shouldDisplay) {
-            # Format size for display
+            # Format size for display with final total
             $sizeFormatted = Format-Size $totalSize
             
-            # Generate tree prefix (no prefix for root level)
-            $treePrefix = if ($Level -eq 0) { "" } else { Get-TreePrefix -Level $Level -IsLast $IsLast -ParentPrefixes $ParentPrefixes }
-            
-            # Get color based on directory size
+            # Get color based on total directory size
             $sizeColor = Get-SizeColor $totalSize
             
             # Display current directory info with access status and size-based coloring
             $accessIndicator = if ($hasAccessIssues) { " [!]" } else { "" }
-            $directoryName = Split-Path $DirectoryPath -Leaf
             
             # Display with color coding
             Write-Host "$treePrefix$directoryName - " -NoNewline
