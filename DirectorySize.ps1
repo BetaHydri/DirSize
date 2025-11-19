@@ -325,7 +325,7 @@ function Get-DirectorySize {
                 }
                 
                 try {
-                    # Prepare parent prefixes for next level (only if displaying this level)
+                    # Prepare parent prefixes for next level
                     $newParentPrefixes = $ParentPrefixes + @(
                         if ($IsLast) { "    " } else { "│   " }
                     )
