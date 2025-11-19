@@ -1,18 +1,19 @@
 <#
 .SYNOPSIS
-    Analyzes directory sizes with administrator privilege handling.
+    Analyzes directory sizes with administrator privilege handling and folder-only output.
 
 .DESCRIPTION
     A powerful PowerShell script that calculates directory sizes recursively with comprehensive
     error handling, administrator privilege detection, and auto-elevation capabilities.
-    Provides formatted output with visual indicators for access restrictions.
+    Provides formatted output focused on directories only, with visual indicators for access restrictions.
+    Files are included in calculations but only folder totals are displayed.
 
 .PARAMETER Path
     The directory path to analyze. This parameter is mandatory.
 
 .PARAMETER Recurse
     Include subdirectories in the size calculation. When enabled, the script will
-    traverse all subdirectories and provide a hierarchical view of disk usage.
+    traverse all subdirectories and provide a hierarchical view of folder-level disk usage.
 
 .PARAMETER RequireAdmin
     Force the script to run with administrator privileges. If not running as admin,
@@ -24,15 +25,15 @@
 
 .EXAMPLE
     .\DirectorySize.ps1 -Path "C:\Users\Documents"
-    Analyzes the Documents directory without recursion.
+    Analyzes the Documents directory showing only folder sizes (no individual files).
 
 .EXAMPLE
     .\DirectorySize.ps1 -Path "C:\Program Files" -Recurse
-    Recursively analyzes the Program Files directory and all subdirectories.
+    Recursively analyzes the Program Files directory showing hierarchical folder structure.
 
 .EXAMPLE
     .\DirectorySize.ps1 -Path "C:\Windows" -Recurse -RequireAdmin
-    Analyzes Windows directory with forced administrator privileges.
+    Analyzes Windows directory with forced administrator privileges, displaying folder totals only.
 
 .EXAMPLE
     .\DirectorySize.ps1 -Path "D:\" -Recurse -SkipRestrictedDirs
@@ -161,12 +162,13 @@ function Start-ElevatedScript {
 function Get-DirectorySize {
     <#
     .SYNOPSIS
-        Recursively calculates directory size with comprehensive error handling.
+        Recursively calculates directory size with comprehensive error handling and folder-only display.
     
     .DESCRIPTION
         Core function that traverses directories, calculates file sizes, handles
-        permission errors, and provides visual feedback. Supports hierarchical
-        display with indentation and access restriction indicators.
+        permission errors, and provides visual feedback. Displays only directories
+        with their total sizes (including files), supporting hierarchical view
+        with indentation and access restriction indicators.
     
     .PARAMETER DirectoryPath
         The full path to the directory to analyze.
@@ -214,7 +216,7 @@ function Get-DirectorySize {
     $hasAccessIssues = $false
     
     try {
-        # Get files in current directory
+        # Get files in current directory (for size calculation only)
         $files = Get-ChildItem -Path $DirectoryPath -File -ErrorAction SilentlyContinue
         $fileSize = ($files | Measure-Object -Property Length -Sum).Sum
         if ($null -eq $fileSize) { $fileSize = 0 }
@@ -222,7 +224,8 @@ function Get-DirectorySize {
         # Get subdirectories
         $directories = Get-ChildItem -Path $DirectoryPath -Directory -ErrorAction SilentlyContinue
         
-        $totalSize += $fileSize
+        # Start with files in current directory
+        $totalSize = $fileSize
         
         # Process subdirectories if recursion is enabled
         if ($Recurse -and $directories) {
@@ -247,12 +250,15 @@ function Get-DirectorySize {
             }
         }
         
-        # Format size for display
-        $sizeFormatted = Format-Size $totalSize
-        
-        # Display current directory info with access status
-        $accessIndicator = if ($hasAccessIssues) { " [!]" } else { "" }
-        Write-Host "$indent$(Split-Path $DirectoryPath -Leaf) - $sizeFormatted$accessIndicator"
+        # Display directory information (always show when recursing, or if root level)
+        if ($Recurse -or $Level -eq 0) {
+            # Format size for display
+            $sizeFormatted = Format-Size $totalSize
+            
+            # Display current directory info with access status
+            $accessIndicator = if ($hasAccessIssues) { " [!]" } else { "" }
+            Write-Host "$indent$(Split-Path $DirectoryPath -Leaf) - $sizeFormatted$accessIndicator"
+        }
         
         return $totalSize
     }

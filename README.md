@@ -4,6 +4,7 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 
 ## 🌟 Features
 
+- **Directory-Only Analysis** - Shows folder sizes without individual file listings
 - **Recursive Directory Analysis** - Calculate sizes of directories and their subdirectories
 - **Administrator Privilege Detection** - Automatically detects and handles elevated permissions
 - **Auto-Elevation** - Can restart itself with administrator privileges when needed
@@ -64,7 +65,7 @@ The script includes sophisticated administrator privilege handling:
 
 ## 📊 Output Format
 
-The script provides color-coded, formatted output:
+The script provides color-coded, formatted output focused on directories only:
 
 ```
 Directory Size Analysis
@@ -73,15 +74,23 @@ Path: C:\Program Files
 Recursive: True
 Administrator: True
 
+Program Files - 15.2 GB
   Adobe - 2.34 GB
-  Common Files - 156.78 MB
   Microsoft Office - 3.21 GB [!]
   Windows Defender - 89.45 MB
+  Common Files - 156.78 MB
 
-Total Size: 5.82 GB
+Total Size: 15.2 GB
 Restricted Directories: 1
 Note: [!] indicates directories with access restrictions
 ```
+
+### Output Features
+
+- **Directory Totals Only** - Shows folder sizes including all files within them
+- **Hierarchical Structure** - Indented display shows folder relationships
+- **File Inclusion** - All files are counted in their parent directory totals
+- **Clean Display** - No individual file listings for easier folder-level analysis
 
 ### Output Indicators
 
@@ -173,6 +182,7 @@ If you encounter issues:
 - **v1.0** - Initial release with basic directory size calculation
 - **v1.1** - Added administrator privilege handling and auto-elevation
 - **v1.2** - Enhanced error handling and visual indicators
+- **v1.3** - Directory-only output for cleaner folder-level analysis
 
 ---
 
