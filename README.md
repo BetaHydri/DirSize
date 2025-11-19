@@ -173,6 +173,52 @@ Size Color Legend:
   Red = Very Large (>10GB)  Magenta = Large (5-10GB)  Yellow = Medium (1-5GB)
 ```
 
+## 💾 File Output
+
+The `-SaveToFile` parameter allows you to save the complete directory tree analysis to a UTF-8 text file:
+
+### File Output Features
+
+- **UTF-8 Encoding** - Preserves Unicode tree characters (├──, └──, │)
+- **Complete Tree Structure** - Exact copy of console output without color formatting
+- **Header Information** - Includes analysis path, depth, and admin status
+- **Summary Data** - Contains total size, color legend, and restriction notes
+- **Automatic Directory Creation** - Creates output directory if it doesn't exist
+
+### File Output Examples
+
+```powershell
+# Save to current directory
+.\DirectorySize.ps1 -Path "C:\Program Files" -Depth 2 -SaveToFile "programs.txt"
+
+# Save with timestamp
+$timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+.\DirectorySize.ps1 -Path "C:\Windows" -SaveToFile "Windows_Analysis_$timestamp.txt"
+
+# Save to specific location
+.\DirectorySize.ps1 -Path "D:\Projects" -Depth 0 -FastMode -SaveToFile "C:\Reports\project_sizes.txt"
+```
+
+### Sample File Output
+
+```plaintext
+Directory Size Analysis
+======================
+Path: C:\Program Files
+Analysis Depth: 2 levels
+Administrator: True
+
+Program Files - 15,2 GB
+├── Adobe - 2,34 GB
+├── Microsoft Office - 3,21 GB
+├── Windows Defender - 89,45 MB
+└── Common Files - 156,78 MB
+
+Total Size: 15,2 GB
+Size Color Legend:
+  Red = Very Large (>10GB)  Magenta = Large (5-10GB)  Yellow = Medium (1-5GB)
+```
+
 ### Progress Indication
 
 - **Rotating Cursor** - Shows | / - \\ animation during analysis
