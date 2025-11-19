@@ -9,11 +9,10 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 - **Size-Based Color Coding** - Visual highlighting of large directories (Red >10GB, Magenta >5GB, Yellow >1GB)
 - **Flexible Depth Control** - Specify exact analysis depth from current directory only to unlimited
 - **Administrator Privilege Detection** - Automatically detects and validates elevated permissions
-- **Privilege Validation** - Ensures required permissions are available before analysis
+- **Clean Output** - Quiet operation by default with visual indicators for access issues
 - **Access Control Handling** - Gracefully handles permission-denied scenarios
 - **Formatted Output** - Human-readable size formatting (KB, MB, GB, TB)
-- **Visual Indicators** - Shows directories with access restrictions
-- **Simple Interface** - Clean parameter set focused on depth control
+- **Simple Interface** - Minimal parameter set focused on essential functionality
 
 ## 🚀 Quick Start
 
@@ -39,14 +38,14 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 # Limit analysis to 2 levels deep
 .\DirectorySize.ps1 -Path "C:\Program Files" -Depth 2
 
-# Deep analysis with quiet mode (3 levels)
-.\DirectorySize.ps1 -Path "C:\" -Depth 3 -SkipRestrictedDirs
+# Deep analysis with clean output (default quiet operation)
+.\DirectorySize.ps1 -Path "C:\" -Depth 3
 
 # System analysis with admin validation
-.\DirectorySize.ps1 -Path "C:\Windows\System32" -Depth 0 -RequireAdmin -SkipRestrictedDirs
+.\DirectorySize.ps1 -Path "C:\Windows\System32" -Depth 0 -RequireAdmin
 ```
 
-**Note**: When using `-RequireAdmin`, you must manually start PowerShell as Administrator first.
+**Note**: The tool operates quietly by default with clean output. Access restrictions are indicated by `[!]` markers and summarized at the end.
 
 ## 📋 Parameters
 
@@ -55,7 +54,8 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 | `-Path` | String | **Required.** The directory path to analyze |
 | `-Depth` | Integer | Analysis depth level (1=current only, 2=one level deep, 0=unlimited). Default: 1 |
 | `-RequireAdmin` | Switch | Require administrator privileges (exit with error if not admin) |
-| `-SkipRestrictedDirs` | Switch | Suppress warning messages for access-denied directories |
+
+**Note**: The tool operates quietly by default, showing only essential information with visual indicators `[!]` for access restrictions.
 
 ## 🎯 Depth Control
 
@@ -252,6 +252,7 @@ If you encounter issues:
 - **v1.8** - Added pause functionality to prevent elevated windows from auto-closing
 - **v1.9** - Removed auto-elevation, simplified to manual admin privilege requirement
 - **v2.0** - Added size-based color coding for improved large directory visibility
+- **v2.1** - Removed -SkipRestrictedDirs parameter, quiet operation by default
 
 ---
 

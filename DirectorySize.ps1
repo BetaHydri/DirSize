@@ -4,9 +4,9 @@
 
 .DESCRIPTION
     A powerful PowerShell script that calculates directory sizes recursively with comprehensive
-    error handling, administrator privilege detection, and auto-elevation capabilities.
+    error handling, administrator privilege detection, and validation capabilities.
     Always calculates ALL subdirectory sizes for accurate totals, but displays only up to
-    the specified depth level. Files are included in calculations but only folder totals are displayed.
+    the specified depth level. Operates quietly by default with clean output and visual indicators.
 
 .PARAMETER Path
     The directory path to analyze. This parameter is mandatory.
@@ -19,10 +19,6 @@
 .PARAMETER RequireAdmin
     Require the script to run with administrator privileges. If not running as admin,
     the script will exit with an error message instead of continuing with limited access.
-
-.PARAMETER SkipRestrictedDirs
-    Suppress warning messages for directories that cannot be accessed due to
-    permission restrictions. Useful for cleaner output when scanning large drives.
 
 .EXAMPLE
     .\DirectorySize.ps1 -Path "C:\Users\Documents"
@@ -39,8 +35,8 @@
     Will exit with error if not running as administrator.
 
 .EXAMPLE
-    .\DirectorySize.ps1 -Path "D:\" -Depth 3 -SkipRestrictedDirs
-    Scans D: drive up to 3 levels deep with suppressed access warnings.
+    .\DirectorySize.ps1 -Path "D:\" -Depth 3
+    Scans D: drive up to 3 levels deep with clean output (warnings suppressed by default).
 
 .NOTES
     File Name      : DirectorySize.ps1
@@ -65,11 +61,8 @@ param(
     [ValidateRange(0, 100)]
     [int]$Depth = 1,
     
-    [Parameter(HelpMessage = "Force administrator privileges (auto-elevate if needed)")]
-    [switch]$RequireAdmin,
-    
-    [Parameter(HelpMessage = "Suppress warnings for access-denied directories")]
-    [switch]$SkipRestrictedDirs
+    [Parameter(HelpMessage = "Require administrator privileges (exit with error if not admin)")]
+    [switch]$RequireAdmin
 )
 
 function Test-IsAdministrator {
@@ -243,11 +236,11 @@ function Get-DirectorySize {
         Calculates size with level 1 indentation (used in recursive calls).
     
     .NOTES
-        - Handles UnauthorizedAccessException gracefully
+        - Handles UnauthorizedAccessException gracefully with quiet operation
         - Uses [!] indicator for directories with access issues
-        - Supports the global -SkipRestrictedDirs parameter
+        - Operates quietly by default for clean output
         - Automatically formats and displays sizes using Format-Size function
-        - Recursion controlled by global -Recurse parameter
+        - Tracks restricted directory count for summary display
     #>
     param(
         [Parameter(Mandatory = $true)]
@@ -308,15 +301,10 @@ function Get-DirectorySize {
                 catch [System.UnauthorizedAccessException] {
                     $hasAccessIssues = $true
                     $RestrictedDirs.Value++
-                    
-                    if (-not $SkipRestrictedDirs) {
-                        Write-Warning "Access denied: $($dir.FullName) - Administrator privileges may be required"
-                    }
+                    # Quiet operation by default - no warning messages for cleaner output
                 }
                 catch {
-                    if (-not $SkipRestrictedDirs) {
-                        Write-Warning "Error accessing: $($dir.FullName) - $($_.Exception.Message)"
-                    }
+                    # Quiet operation by default - no error messages for cleaner output
                 }
             }
         }
@@ -347,15 +335,11 @@ function Get-DirectorySize {
     }
     catch [System.UnauthorizedAccessException] {
         $RestrictedDirs.Value++
-        if (-not $SkipRestrictedDirs) {
-            Write-Warning "Access denied: $DirectoryPath - Administrator privileges required"
-        }
+        # Quiet operation by default - no warning for cleaner output
         return 0
     }
     catch {
-        if (-not $SkipRestrictedDirs) {
-            Write-Warning "Error accessing: $DirectoryPath - $($_.Exception.Message)"
-        }
+        # Quiet operation by default - no error messages for cleaner output
         return 0
     }
 }
