@@ -319,11 +319,19 @@ function Get-DirectorySize {
             Write-Host ""
         }
         
-        # Display current directory BEFORE processing subdirectories (but will show final size after)
+        # Display current directory IMMEDIATELY (before processing subdirectories)
         if ($shouldDisplay) {
-            # We'll display after calculating total size, so store the display info for now
             $directoryName = Split-Path $DirectoryPath -Leaf
             $treePrefix = if ($Level -eq 0) { "" } else { Get-TreePrefix -Level $Level -IsLast $IsLast -ParentPrefixes $ParentPrefixes }
+            
+            # Display directory name immediately - we'll show files+subdirs size for now
+            $tempSize = Format-Size $fileSize
+            $tempColor = Get-SizeColor $fileSize
+            
+            # Display the directory entry immediately
+            Write-Host "$treePrefix$directoryName - " -NoNewline
+            Write-Host $tempSize -ForegroundColor $tempColor -NoNewline
+            if ($hasAccessIssues) { Write-Host " [!]" } else { Write-Host "" }
         }
         
         # Always process ALL subdirectories for accurate size calculation
@@ -374,23 +382,6 @@ function Get-DirectorySize {
                     # Quiet operation by default - no error messages for cleaner output
                 }
             }
-        }
-        
-        # Now display the directory with the correct total size
-        if ($shouldDisplay) {
-            # Format size for display with final total
-            $sizeFormatted = Format-Size $totalSize
-            
-            # Get color based on total directory size
-            $sizeColor = Get-SizeColor $totalSize
-            
-            # Display current directory info with access status and size-based coloring
-            $accessIndicator = if ($hasAccessIssues) { " [!]" } else { "" }
-            
-            # Display with color coding
-            Write-Host "$treePrefix$directoryName - " -NoNewline
-            Write-Host $sizeFormatted -ForegroundColor $sizeColor -NoNewline
-            Write-Host $accessIndicator
         }
         
         return $totalSize
