@@ -17,8 +17,8 @@
     all subdirectories for accurate totals regardless of display depth. Default is 1.
 
 .PARAMETER RequireAdmin
-    Force the script to run with administrator privileges. If not running as admin,
-    the script will attempt to auto-elevate using UAC prompt.
+    Require the script to run with administrator privileges. If not running as admin,
+    the script will exit with an error message instead of continuing with limited access.
 
 .PARAMETER SkipRestrictedDirs
     Suppress warning messages for directories that cannot be accessed due to
@@ -35,8 +35,8 @@
 
 .EXAMPLE
     .\DirectorySize.ps1 -Path "C:\Windows" -Depth 0 -RequireAdmin
-    Displays unlimited directory depth with forced administrator privileges.
-    Calculates and shows complete directory tree.
+    Requires administrator privileges for Windows directory analysis.
+    Will exit with error if not running as administrator.
 
 .EXAMPLE
     .\DirectorySize.ps1 -Path "D:\" -Depth 3 -SkipRestrictedDirs
@@ -114,57 +114,23 @@ function Test-IsAdministrator {
 function Start-ElevatedScript {
     <#
     .SYNOPSIS
-        Restarts the current script with administrator privileges using UAC elevation.
+        [DEPRECATED] Previously used for automatic elevation - now removed.
     
     .DESCRIPTION
-        This function uses Start-Process with the -Verb RunAs parameter to launch
-        a new PowerShell session with elevated privileges. It preserves the original
-        script arguments and triggers the Windows User Account Control (UAC) prompt.
-        The elevated session will pause at the end to prevent automatic window closure.
-    
-    .PARAMETER ScriptPath
-        The full path to the PowerShell script file that should be elevated.
-        Must be a valid .ps1 file path.
-    
-    .PARAMETER Arguments
-        Array of arguments to pass to the elevated script instance.
-        Arguments are joined with spaces and passed to the new process.
-    
-    .EXAMPLE
-        Start-ElevatedScript -ScriptPath "C:\Scripts\MyScript.ps1" -Arguments @("-Path", "C:\Windows")
-        Restarts MyScript.ps1 with admin privileges and the specified arguments.
-    
-    .EXAMPLE
-        Start-ElevatedScript -ScriptPath $MyInvocation.MyCommand.Path -Arguments $args
-        Restarts the current script with elevation, preserving original arguments.
+        This function was used for automatic UAC elevation but has been removed
+        from the current implementation. The script now requires manual elevation
+        when administrator privileges are needed.
     
     .NOTES
-        - Requires the script to be saved as a .ps1 file (doesn't work with unsaved scripts)
-        - Triggers UAC prompt - user must approve elevation
-        - Original script process exits after starting elevated instance
-        - Uses -NoProfile for faster startup and -ExecutionPolicy Bypass for reliability
-        - Elevated window will pause at the end to allow user to review results
-    
-    .LINK
-        https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/start-process
+        This function is kept for backward compatibility but is no longer called.
+        Users must manually run PowerShell as Administrator when needed.
     #>
-    
     param(
         [string]$ScriptPath,
         [string[]]$Arguments
     )
     
-    try {
-        $argumentString = $Arguments -join ' '
-        # Construct the complete command with pause
-        $fullCommand = "& `"$ScriptPath`" $argumentString; Write-Host ''; Write-Host 'Press any key to close this window...' -ForegroundColor Yellow; `$null = Read-Host"
-        Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $fullCommand -Verb RunAs
-        exit
-    }
-    catch {
-        Write-Error "Failed to restart script with administrator privileges: $($_.Exception.Message)"
-        exit 1
-    }
+    Write-Warning "Automatic elevation has been disabled. Please run PowerShell as Administrator manually."
 }
 
 function Get-TreePrefix {
@@ -364,9 +330,17 @@ function Get-DirectorySize {
             # Generate tree prefix
             $treePrefix = Get-TreePrefix -Level $Level -IsLast $IsLast -ParentPrefixes $ParentPrefixes
             
-            # Display current directory info with access status
+            # Get color based on directory size
+            $sizeColor = Get-SizeColor $totalSize
+            
+            # Display current directory info with access status and size-based coloring
             $accessIndicator = if ($hasAccessIssues) { " [!]" } else { "" }
-            Write-Host "$treePrefix$(Split-Path $DirectoryPath -Leaf) - $sizeFormatted$accessIndicator"
+            $directoryName = Split-Path $DirectoryPath -Leaf
+            
+            # Display with color coding
+            Write-Host "$treePrefix$directoryName - " -NoNewline
+            Write-Host $sizeFormatted -ForegroundColor $sizeColor -NoNewline
+            Write-Host $accessIndicator
         }
         
         return $totalSize
@@ -383,6 +357,56 @@ function Get-DirectorySize {
             Write-Warning "Error accessing: $DirectoryPath - $($_.Exception.Message)"
         }
         return 0
+    }
+}
+
+function Get-SizeColor {
+    <#
+    .SYNOPSIS
+        Determines the appropriate color for displaying directory sizes based on size thresholds.
+    
+    .DESCRIPTION
+        Returns PowerShell color names based on directory size to provide visual indicators
+        for large directories. Uses a tiered color system to highlight storage usage.
+    
+    .PARAMETER Size
+        The size in bytes to evaluate for color assignment.
+    
+    .OUTPUTS
+        System.String
+        Returns PowerShell color name (Red, Magenta, Yellow, or White).
+    
+    .EXAMPLE
+        Get-SizeColor 15000000000
+        Returns "Red" for sizes over 10GB.
+    
+    .EXAMPLE
+        Get-SizeColor 2000000000
+        Returns "Yellow" for sizes over 1GB but under 5GB.
+    
+    .NOTES
+        Color thresholds:
+        - Red: Over 10GB (very large)
+        - Magenta: 5GB to 10GB (large)
+        - Yellow: 1GB to 5GB (medium-large)
+        - White: Under 1GB (normal)
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [long]$Size
+    )
+    
+    if ($Size -ge 10GB) {
+        return "Red"        # Very large directories (>10GB)
+    }
+    elseif ($Size -ge 5GB) {
+        return "Magenta"    # Large directories (5-10GB)
+    }
+    elseif ($Size -ge 1GB) {
+        return "Yellow"     # Medium-large directories (1-5GB)
+    }
+    else {
+        return "White"      # Normal directories (<1GB)
     }
 }
 
@@ -444,23 +468,10 @@ $DepthDescription = if ($Depth -eq 0) { "Unlimited" } elseif ($Depth -eq 1) { "C
 $isAdmin = Test-IsAdministrator
 
 if ($RequireAdmin -and -not $isAdmin) {
-    Write-Host "Administrator privileges required but not detected." -ForegroundColor Red
-    
-    # Try to restart with elevated privileges if this is a saved script file
-    if ($MyInvocation.MyCommand.Path) {
-        Write-Host "Attempting to restart with administrator privileges..." -ForegroundColor Yellow
-        $scriptArgs = @()
-        $scriptArgs += "-Path `"$Path`""
-        if ($Depth -ne 1) { $scriptArgs += "-Depth $Depth" }
-        if ($SkipRestrictedDirs) { $scriptArgs += "-SkipRestrictedDirs" }
-        $scriptArgs += "-RequireAdmin"
-        
-        Start-ElevatedScript -ScriptPath $MyInvocation.MyCommand.Path -Arguments $scriptArgs
-    }
-    else {
-        Write-Host "Please run this script as administrator or save it as a .ps1 file for automatic elevation." -ForegroundColor Yellow
-        exit 1
-    }
+    Write-Host "Error: Administrator privileges required but not detected." -ForegroundColor Red
+    Write-Host "Please run PowerShell as Administrator and try again." -ForegroundColor Yellow
+    Write-Host "Right-click PowerShell and select 'Run as Administrator'" -ForegroundColor Gray
+    exit 1
 }
 
 # Validate path
@@ -485,22 +496,28 @@ $restrictedDirCount = 0
 
 $totalSize = Get-DirectorySize -DirectoryPath $Path -MaxDepth 0 -DisplayDepth $Depth -RestrictedDirs ([ref]$restrictedDirCount)
 $totalFormatted = Format-Size $totalSize
+$totalColor = Get-SizeColor $totalSize
 
 Write-Host ""
-Write-Host "Total Size: $totalFormatted" -ForegroundColor Green
+Write-Host "Total Size: " -NoNewline
+Write-Host $totalFormatted -ForegroundColor $totalColor
 
 if ($restrictedDirCount -gt 0) {
     Write-Host "Restricted Directories: $restrictedDirCount" -ForegroundColor Yellow
     Write-Host "Note: [!] indicates directories with access restrictions" -ForegroundColor Gray
     
     if (-not $isAdmin) {
-        Write-Host "Tip: Run with -RequireAdmin to automatically request administrator privileges" -ForegroundColor Cyan
+        Write-Host "Tip: Run with -RequireAdmin to ensure administrator privileges" -ForegroundColor Cyan
     }
 }
 
-# Check if this is an elevated session that was auto-started (prevent window from closing)
-if ($isAdmin -and $RequireAdmin -and $MyInvocation.MyCommand.Path) {
-    Write-Host ""
-    Write-Host "Analysis complete. Press any key to close this window..." -ForegroundColor Yellow
-    $null = Read-Host
-}
+# Display color legend
+Write-Host ""
+Write-Host "Size Color Legend:" -ForegroundColor Gray
+Write-Host "  " -NoNewline
+Write-Host "Red" -ForegroundColor Red -NoNewline
+Write-Host " = Very Large (>10GB)  " -NoNewline -ForegroundColor Gray
+Write-Host "Magenta" -ForegroundColor Magenta -NoNewline
+Write-Host " = Large (5-10GB)  " -NoNewline -ForegroundColor Gray
+Write-Host "Yellow" -ForegroundColor Yellow -NoNewline
+Write-Host " = Medium (1-5GB)" -ForegroundColor Gray

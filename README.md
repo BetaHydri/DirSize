@@ -6,10 +6,10 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 
 - **Directory-Only Analysis** - Shows folder sizes without individual file listings
 - **File Explorer-Like Hierarchy** - Tree structure display with ├──, └──, │ characters
+- **Size-Based Color Coding** - Visual highlighting of large directories (Red >10GB, Magenta >5GB, Yellow >1GB)
 - **Flexible Depth Control** - Specify exact analysis depth from current directory only to unlimited
-- **Administrator Privilege Detection** - Automatically detects and handles elevated permissions
-- **Auto-Elevation** - Can restart itself with administrator privileges when needed
-- **Persistent Display** - Elevated sessions pause at completion to review results
+- **Administrator Privilege Detection** - Automatically detects and validates elevated permissions
+- **Privilege Validation** - Ensures required permissions are available before analysis
 - **Access Control Handling** - Gracefully handles permission-denied scenarios
 - **Formatted Output** - Human-readable size formatting (KB, MB, GB, TB)
 - **Visual Indicators** - Shows directories with access restrictions
@@ -33,7 +33,7 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 ### Advanced Usage
 
 ```powershell
-# Force administrator mode with unlimited depth
+# Require administrator privileges (will exit if not admin)
 .\DirectorySize.ps1 -Path "C:\Windows" -Depth 0 -RequireAdmin
 
 # Limit analysis to 2 levels deep
@@ -42,9 +42,11 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 # Deep analysis with quiet mode (3 levels)
 .\DirectorySize.ps1 -Path "C:\" -Depth 3 -SkipRestrictedDirs
 
-# System-wide analysis with all options
+# System analysis with admin validation
 .\DirectorySize.ps1 -Path "C:\Windows\System32" -Depth 0 -RequireAdmin -SkipRestrictedDirs
 ```
+
+**Note**: When using `-RequireAdmin`, you must manually start PowerShell as Administrator first.
 
 ## 📋 Parameters
 
@@ -52,7 +54,7 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 |-----------|------|-------------|
 | `-Path` | String | **Required.** The directory path to analyze |
 | `-Depth` | Integer | Analysis depth level (1=current only, 2=one level deep, 0=unlimited). Default: 1 |
-| `-RequireAdmin` | Switch | Force administrator privileges (auto-elevate if needed) |
+| `-RequireAdmin` | Switch | Require administrator privileges (exit with error if not admin) |
 | `-SkipRestrictedDirs` | Switch | Suppress warning messages for access-denied directories |
 
 ## 🎯 Depth Control
@@ -84,13 +86,13 @@ This means a folder shown at depth 2 includes the sizes of ALL its subdirectorie
 
 ## 🔐 Administrator Privileges
 
-The script includes sophisticated administrator privilege handling:
+The script includes administrator privilege detection and validation:
 
 - **Detection**: Automatically detects if running with admin privileges
-- **Auto-Elevation**: Can restart itself with elevated permissions
-- **Persistent Display**: Elevated windows pause at completion for result review
-- **Graceful Fallback**: Continues operation with limited access when elevation isn't possible
-- **Clear Feedback**: Shows admin status and restricted directory counts
+- **Validation**: Can require admin privileges with `-RequireAdmin` parameter
+- **Clear Feedback**: Shows admin status and provides helpful error messages
+- **Manual Elevation**: Users must manually start PowerShell as Administrator when needed
+- **Graceful Fallback**: Continues with limited access when admin not required
 
 ### When do you need admin privileges?
 
@@ -110,22 +112,32 @@ Path: C:\Program Files
 Analysis Depth: 3 levels
 Administrator: True
 
-Program Files - 15.2 GB
-├── Adobe - 2.34 GB
-│   ├── Acrobat DC - 1.8 GB
-│   └── Creative Cloud - 540 MB
-├── Microsoft Office - 3.21 GB [!]
-│   ├── Office16 - 2.1 GB
-│   └── Templates - 110 MB
-├── Windows Defender - 89.45 MB
-└── Common Files - 156.78 MB
-    ├── Microsoft Shared - 98.2 MB
-    └── System - 58.6 MB
+Program Files - 15.2 GB                    [Red - Very Large]
+├── Adobe - 2.34 GB                      [Yellow - Medium]
+│   ├── Acrobat DC - 1.8 GB               [Yellow - Medium]
+│   └── Creative Cloud - 540 MB           [White - Normal]
+├── Microsoft Office - 3.21 GB           [Yellow - Medium]
+│   ├── Office16 - 2.1 GB                 [Yellow - Medium]
+│   └── Templates - 110 MB                [White - Normal]
+├── Windows Defender - 89.45 MB          [White - Normal]
+└── Common Files - 156.78 MB             [White - Normal]
+    ├── Microsoft Shared - 98.2 MB        [White - Normal]
+    └── System - 58.6 MB                  [White - Normal]
 
-Total Size: 15.2 GB
+Total Size: 15.2 GB                        [Red - Very Large]
 Restricted Directories: 1
 Note: [!] indicates directories with access restrictions
+
+Size Color Legend:
+  Red = Very Large (>10GB)  Magenta = Large (5-10GB)  Yellow = Medium (1-5GB)
 ```
+
+### Color Coding System
+
+- 🔴 **Red**: Very large directories (>10GB) - Immediate attention needed
+- 🔵 **Magenta**: Large directories (5-10GB) - Consider for cleanup
+- 🟡 **Yellow**: Medium directories (1-5GB) - Monitor usage
+- ⚪ **White**: Normal directories (<1GB) - Standard size
 
 ### Hierarchy Display Features
 
@@ -238,6 +250,8 @@ If you encounter issues:
 - **v1.6** - File Explorer-like tree hierarchy display with visual characters
 - **v1.7** - Separated display depth from calculation depth for accurate totals
 - **v1.8** - Added pause functionality to prevent elevated windows from auto-closing
+- **v1.9** - Removed auto-elevation, simplified to manual admin privilege requirement
+- **v2.0** - Added size-based color coding for improved large directory visibility
 
 ---
 
