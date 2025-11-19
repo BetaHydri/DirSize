@@ -48,7 +48,7 @@
 
 .NOTES
     File Name      : DirectorySize.ps1
-    Author         : jantiede
+    Author         : Jan Tiedemann
     Prerequisite   : PowerShell 5.1 or later
     License        : MIT License
 
