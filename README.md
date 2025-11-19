@@ -5,6 +5,7 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 ## 🌟 Features
 
 - **Directory-Only Analysis** - Shows folder sizes without individual file listings
+- **File Explorer-Like Hierarchy** - Tree structure display with ├──, └──, │ characters
 - **Flexible Depth Control** - Specify exact analysis depth from current directory only to unlimited
 - **Administrator Privilege Detection** - Automatically detects and handles elevated permissions
 - **Auto-Elevation** - Can restart itself with administrator privileges when needed
@@ -55,23 +56,28 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 
 ## 🎯 Depth Control
 
-The `-Depth` parameter provides precise control over analysis depth:
+The `-Depth` parameter controls **display depth** while always calculating complete directory sizes:
 
-- **`-Depth 1`** (Default): Current directory only - shows total size without subdirectory breakdown
-- **`-Depth 2`**: Current directory + one level of subdirectories
-- **`-Depth 3`**: Current directory + two levels of subdirectories
-- **`-Depth 0`**: Unlimited depth - analyzes entire directory tree
+- **`-Depth 1`** (Default): Shows only root directory total (calculates all subdirectories for accuracy)
+- **`-Depth 2`**: Shows root + one level of subdirectories (with accurate totals including deeper levels)
+- **`-Depth 3`**: Shows root + two levels of subdirectories (with complete size calculations)
+- **`-Depth 0`**: Shows complete directory tree (unlimited display and calculation)
+
+### Key Feature: Accurate Totals
+
+📊 **The tool always calculates ALL subdirectories** for accurate size totals, regardless of display depth.
+This means a folder shown at depth 2 includes the sizes of ALL its subdirectories, even those not displayed.
 
 ### Depth Examples
 
 ```powershell
-# Show only the total size of Program Files
+# Show only total Program Files size (includes all subdirectories in calculation)
 .\DirectorySize.ps1 -Path "C:\Program Files" -Depth 1
 
-# Show Program Files and immediate subdirectories
+# Show Program Files + immediate subdirectories (with accurate totals)
 .\DirectorySize.ps1 -Path "C:\Program Files" -Depth 2
 
-# Complete analysis of all subdirectories
+# Complete tree display and calculation
 .\DirectorySize.ps1 -Path "C:\Program Files" -Depth 0
 ```
 
@@ -93,25 +99,39 @@ The script includes sophisticated administrator privilege handling:
 
 ## 📊 Output Format
 
-The script provides color-coded, formatted output focused on directories only:
+The script provides color-coded, formatted output with File Explorer-like hierarchy:
 
 ```
 Directory Size Analysis
 ======================
 Path: C:\Program Files
-Analysis Depth: 2 levels
+Analysis Depth: 3 levels
 Administrator: True
 
 Program Files - 15.2 GB
-  Adobe - 2.34 GB
-  Microsoft Office - 3.21 GB [!]
-  Windows Defender - 89.45 MB
-  Common Files - 156.78 MB
+├── Adobe - 2.34 GB
+│   ├── Acrobat DC - 1.8 GB
+│   └── Creative Cloud - 540 MB
+├── Microsoft Office - 3.21 GB [!]
+│   ├── Office16 - 2.1 GB
+│   └── Templates - 110 MB
+├── Windows Defender - 89.45 MB
+└── Common Files - 156.78 MB
+    ├── Microsoft Shared - 98.2 MB
+    └── System - 58.6 MB
 
 Total Size: 15.2 GB
 Restricted Directories: 1
 Note: [!] indicates directories with access restrictions
 ```
+
+### Hierarchy Display Features
+
+- **Tree Structure** - Uses ├──, └──, and │ characters like File Explorer
+- **Visual Relationships** - Clear parent-child directory relationships
+- **Last Item Indicators** - └── shows the last item at each level
+- **Continuation Lines** - │ shows ongoing hierarchy levels
+- **Clean Alignment** - Proper spacing for easy reading
 
 ### Output Features
 
@@ -213,6 +233,8 @@ If you encounter issues:
 - **v1.3** - Directory-only output for cleaner folder-level analysis
 - **v1.4** - Added depth control parameter with flexible recursion options
 - **v1.5** - Simplified interface by removing -Recurse switch, depth-only control
+- **v1.6** - File Explorer-like tree hierarchy display with visual characters
+- **v1.7** - Separated display depth from calculation depth for accurate totals
 
 ---
 

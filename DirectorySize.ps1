@@ -5,15 +5,16 @@
 .DESCRIPTION
     A powerful PowerShell script that calculates directory sizes recursively with comprehensive
     error handling, administrator privilege detection, and auto-elevation capabilities.
-    Provides formatted output focused on directories only, with visual indicators for access restrictions.
-    Files are included in calculations but only folder totals are displayed.
+    Always calculates ALL subdirectory sizes for accurate totals, but displays only up to
+    the specified depth level. Files are included in calculations but only folder totals are displayed.
 
 .PARAMETER Path
     The directory path to analyze. This parameter is mandatory.
 
 .PARAMETER Depth
-    Specify the maximum depth level for directory traversal (1 = current directory only,
-    2 = one level deep, etc.). Use 0 for unlimited depth. Default is 1.
+    Specify the maximum depth level for DISPLAY (1 = current directory only,
+    2 = show one level deep, etc.). Use 0 for unlimited display. Always calculates
+    all subdirectories for accurate totals regardless of display depth. Default is 1.
 
 .PARAMETER RequireAdmin
     Force the script to run with administrator privileges. If not running as admin,
@@ -29,11 +30,13 @@
 
 .EXAMPLE
     .\DirectorySize.ps1 -Path "C:\Program Files" -Depth 2
-    Analyzes the Program Files directory up to 2 levels deep.
+    Displays Program Files directory and one level of subdirectories, but calculates
+    all subdirectories for accurate size totals.
 
 .EXAMPLE
     .\DirectorySize.ps1 -Path "C:\Windows" -Depth 0 -RequireAdmin
-    Analyzes Windows directory with unlimited depth and forced administrator privileges.
+    Displays unlimited directory depth with forced administrator privileges.
+    Calculates and shows complete directory tree.
 
 .EXAMPLE
     .\DirectorySize.ps1 -Path "D:\" -Depth 3 -SkipRestrictedDirs
@@ -160,16 +163,75 @@ function Start-ElevatedScript {
     }
 }
 
+function Get-TreePrefix {
+    <#
+    .SYNOPSIS
+        Generates tree-like prefix characters for hierarchical display.
+    
+    .DESCRIPTION
+        Creates visual tree characters (├──, └──, │) similar to File Explorer
+        to show directory hierarchy relationships clearly.
+    
+    .PARAMETER Level
+        The current depth level in the directory tree.
+    
+    .PARAMETER IsLast
+        Whether this is the last item at the current level.
+    
+    .PARAMETER ParentPrefixes
+        Array of prefix characters from parent levels.
+    
+    .OUTPUTS
+        System.String
+        Returns formatted tree prefix string for display.
+    
+    .EXAMPLE
+        Get-TreePrefix -Level 1 -IsLast $false -ParentPrefixes @()
+        Returns "├── " for a non-last item at level 1.
+    #>
+    param(
+        [int]$Level,
+        [bool]$IsLast,
+        [string[]]$ParentPrefixes = @()
+    )
+    
+    if ($Level -eq 0) {
+        return ""
+    }
+    
+    $prefix = ""
+    
+    # Add parent prefixes
+    for ($i = 0; $i -lt ($Level - 1); $i++) {
+        if ($i -lt $ParentPrefixes.Count) {
+            $prefix += $ParentPrefixes[$i]
+        }
+        else {
+            $prefix += "    "
+        }
+    }
+    
+    # Add current level prefix
+    if ($IsLast) {
+        $prefix += "└── "
+    }
+    else {
+        $prefix += "├── "
+    }
+    
+    return $prefix
+}
+
 function Get-DirectorySize {
     <#
     .SYNOPSIS
-        Recursively calculates directory size with comprehensive error handling and folder-only display.
+        Recursively calculates directory size with comprehensive error handling and depth-controlled display.
     
     .DESCRIPTION
-        Core function that traverses directories, calculates file sizes, handles
-        permission errors, and provides visual feedback. Displays only directories
-        with their total sizes (including files), supporting hierarchical view
-        with indentation and access restriction indicators.
+        Core function that traverses ALL directories for accurate size calculation, but only
+        displays directories up to the specified depth level. This ensures accurate totals
+        while providing clean, controlled output. Supports hierarchical tree view with
+        visual indicators for access restrictions.
     
     .PARAMETER DirectoryPath
         The full path to the directory to analyze.
@@ -182,9 +244,21 @@ function Get-DirectorySize {
         Maximum allowed depth for recursion. 0 means unlimited depth.
         Used to control how deep the analysis goes.
 
+    .PARAMETER DisplayDepth
+        Maximum depth level for displaying directories. Calculation continues beyond this
+        depth for accuracy, but display is limited to this level.
+
     .PARAMETER RestrictedDirs
         Reference to counter for tracking directories with access restrictions.
         Used to maintain count across recursive calls.
+    
+    .PARAMETER ParentPrefixes
+        Array of prefix strings from parent levels for tree display formatting.
+        Used internally for maintaining proper hierarchy visualization.
+    
+    .PARAMETER IsLast
+        Whether this directory is the last item at its level.
+        Used for proper tree character selection (├── vs └──).
     
     .OUTPUTS
         System.Int64
@@ -215,11 +289,19 @@ function Get-DirectorySize {
         [Parameter()]
         [int]$MaxDepth = 0,
         
+        [Parameter()]
+        [int]$DisplayDepth = 0,
+        
         [Parameter(Mandatory = $true)]
-        [ref]$RestrictedDirs
+        [ref]$RestrictedDirs,
+        
+        [Parameter()]
+        [string[]]$ParentPrefixes = @(),
+        
+        [Parameter()]
+        [bool]$IsLast = $true
     )
     
-    $indent = "  " * $Level
     $totalSize = 0
     $hasAccessIssues = $false
     
@@ -235,11 +317,22 @@ function Get-DirectorySize {
         # Start with files in current directory
         $totalSize = $fileSize
         
-        # Process subdirectories if within depth limit
-        if (($MaxDepth -eq 0 -or $Level -lt ($MaxDepth - 1)) -and $directories) {
-            foreach ($dir in $directories) {
+        # Always process ALL subdirectories for accurate size calculation
+        if ($directories) {
+            $dirCount = $directories.Count
+            
+            for ($i = 0; $i -lt $dirCount; $i++) {
+                $dir = $directories[$i]
+                $isLastDir = ($i -eq ($dirCount - 1))
+                
                 try {
-                    $subDirSize = Get-DirectorySize -DirectoryPath $dir.FullName -Level ($Level + 1) -MaxDepth $MaxDepth -RestrictedDirs $RestrictedDirs
+                    # Prepare parent prefixes for next level (only if displaying this level)
+                    $newParentPrefixes = $ParentPrefixes + @(
+                        if ($IsLast) { "    " } else { "│   " }
+                    )
+                    
+                    # Always calculate subdirectory size, but control display depth
+                    $subDirSize = Get-DirectorySize -DirectoryPath $dir.FullName -Level ($Level + 1) -MaxDepth $MaxDepth -DisplayDepth $DisplayDepth -RestrictedDirs $RestrictedDirs -ParentPrefixes $newParentPrefixes -IsLast $isLastDir
                     $totalSize += $subDirSize
                 }
                 catch [System.UnauthorizedAccessException] {
@@ -258,14 +351,18 @@ function Get-DirectorySize {
             }
         }
         
-        # Display directory information (always show when analyzing with depth, or if root level)
-        if ($MaxDepth -ne 1 -or $Level -eq 0) {
+        # Display directory information only if within display depth (or unlimited display)
+        $shouldDisplay = ($DisplayDepth -eq 0) -or ($Level -lt $DisplayDepth) -or ($Level -eq 0)
+        if ($shouldDisplay -and ($DisplayDepth -ne 1 -or $Level -eq 0)) {
             # Format size for display
             $sizeFormatted = Format-Size $totalSize
             
+            # Generate tree prefix
+            $treePrefix = Get-TreePrefix -Level $Level -IsLast $IsLast -ParentPrefixes $ParentPrefixes
+            
             # Display current directory info with access status
             $accessIndicator = if ($hasAccessIssues) { " [!]" } else { "" }
-            Write-Host "$indent$(Split-Path $DirectoryPath -Leaf) - $sizeFormatted$accessIndicator"
+            Write-Host "$treePrefix$(Split-Path $DirectoryPath -Leaf) - $sizeFormatted$accessIndicator"
         }
         
         return $totalSize
@@ -382,7 +479,7 @@ Write-Host ""
 # Initialize counter for restricted directories
 $restrictedDirCount = 0
 
-$totalSize = Get-DirectorySize -DirectoryPath $Path -MaxDepth $Depth -RestrictedDirs ([ref]$restrictedDirCount)
+$totalSize = Get-DirectorySize -DirectoryPath $Path -MaxDepth 0 -DisplayDepth $Depth -RestrictedDirs ([ref]$restrictedDirCount)
 $totalFormatted = Format-Size $totalSize
 
 Write-Host ""
