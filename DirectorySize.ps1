@@ -319,8 +319,8 @@ function Get-DirectorySize {
                 $dir = $directories[$i]
                 $isLastDir = ($i -eq ($dirCount - 1))
                 
-                # Update progress less frequently for better performance
-                if ($Level -le 1 -and ($i % $progressUpdateInterval -eq 0)) {
+                # Update progress less frequently for better performance (only when not displaying tree)
+                if ($Level -le 1 -and ($i % $progressUpdateInterval -eq 0) -and ($Level -eq 0)) {
                     Update-ProgressIndicator
                 }
                 
@@ -347,6 +347,15 @@ function Get-DirectorySize {
         
         # Display directory information only if within display depth (or unlimited display)
         $shouldDisplay = ($DisplayDepth -eq 0) -or ($Level -lt $DisplayDepth) -or ($Level -eq 0)
+        
+        # Stop progress indicator before any display to prevent interference
+        if ($shouldDisplay -and $Global:ProgressActive -eq $true) {
+            $Global:ProgressActive = $false
+            Write-Host "`b" -NoNewline  # Erase the spinner
+            Write-Host "Complete!" -ForegroundColor Green
+            Write-Host ""
+        }
+        
         if ($shouldDisplay -and ($DisplayDepth -ne 1 -or $Level -eq 0)) {
             # Format size for display
             $sizeFormatted = Format-Size $totalSize
@@ -388,12 +397,14 @@ function Initialize-ProgressIndicator {
     .DESCRIPTION
         Sets up a rotating cursor progress indicator to show that directory
         analysis is in progress. Uses a global variable to track state.
+        Uses a separate line to prevent interference with tree output.
     #>
     
     $Global:ProgressCounter = 0
-    $Global:ProgressChars = @('|', '/', '-', '\')
-    Write-Host "Analyzing directories " -NoNewline
-    Write-Host "|" -NoNewline  # Initial character
+    $Global:ProgressChars = @('|', '/', '-', '\\')
+    $Global:ProgressActive = $true
+    Write-Host "Analyzing directories..." -NoNewline
+    Write-Host " |" -NoNewline  # Initial character
 }
 
 function Update-ProgressIndicator {
@@ -404,10 +415,11 @@ function Update-ProgressIndicator {
     .DESCRIPTION
         Shows a rotating cursor to indicate ongoing directory analysis.
         Call this function periodically during long-running operations.
+        Only updates if progress is still active.
     #>
     
-    if ($Global:ProgressCounter -ne $null) {
-        # Move cursor back one position, write new character, then back again
+    if ($Global:ProgressActive -eq $true -and $Global:ProgressCounter -ne $null) {
+        # Move cursor back one position, write new character
         Write-Host "`b" -NoNewline  # Backspace
         $Global:ProgressCounter++
         Write-Host "$($Global:ProgressChars[$Global:ProgressCounter % 4])" -NoNewline
@@ -421,14 +433,16 @@ function Complete-ProgressIndicator {
     
     .DESCRIPTION
         Removes the rotating cursor and shows completion message.
-        Cleans up global progress variables.
+        Cleans up global progress variables and moves to new line.
     #>
     
-    if ($Global:ProgressCounter -ne $null) {
+    if ($Global:ProgressActive -eq $true) {
         Write-Host "`b" -NoNewline  # Erase the spinner
         Write-Host "Complete!" -ForegroundColor Green
+        $Global:ProgressActive = $false
         Remove-Variable -Name ProgressCounter -Scope Global -ErrorAction SilentlyContinue
         Remove-Variable -Name ProgressChars -Scope Global -ErrorAction SilentlyContinue
+        Remove-Variable -Name ProgressActive -Scope Global -ErrorAction SilentlyContinue
     }
 }
 
@@ -563,16 +577,22 @@ if (-not $isAdmin) {
 }
 Write-Host ""
 
-# Initialize progress indicator
+# Start progress indicator for calculation phase
 Initialize-ProgressIndicator
 
 # Initialize counter for restricted directories
 $restrictedDirCount = 0
 
+# Calculate directory size (progress indicator will complete automatically when display starts)
 $totalSize = Get-DirectorySize -DirectoryPath $Path -MaxDepth 0 -DisplayDepth $Depth -RestrictedDirs ([ref]$restrictedDirCount) -FastMode $FastMode
 
-# Complete progress indicator
-Complete-ProgressIndicator
+# Ensure progress indicator is complete (in case no display occurred)
+if ($Global:ProgressActive -eq $true) {
+    Complete-ProgressIndicator
+    Write-Host ""
+}
+
+# Display results with tree hierarchy (no progress interference)
 
 $totalFormatted = Format-Size $totalSize
 $totalColor = Get-SizeColor $totalSize
