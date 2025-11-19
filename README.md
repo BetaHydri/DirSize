@@ -9,6 +9,7 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 - **Flexible Depth Control** - Specify exact analysis depth from current directory only to unlimited
 - **Administrator Privilege Detection** - Automatically detects and handles elevated permissions
 - **Auto-Elevation** - Can restart itself with administrator privileges when needed
+- **Persistent Display** - Elevated sessions pause at completion to review results
 - **Access Control Handling** - Gracefully handles permission-denied scenarios
 - **Formatted Output** - Human-readable size formatting (KB, MB, GB, TB)
 - **Visual Indicators** - Shows directories with access restrictions
@@ -87,6 +88,7 @@ The script includes sophisticated administrator privilege handling:
 
 - **Detection**: Automatically detects if running with admin privileges
 - **Auto-Elevation**: Can restart itself with elevated permissions
+- **Persistent Display**: Elevated windows pause at completion for result review
 - **Graceful Fallback**: Continues operation with limited access when elevation isn't possible
 - **Clear Feedback**: Shows admin status and restricted directory counts
 
@@ -235,6 +237,7 @@ If you encounter issues:
 - **v1.5** - Simplified interface by removing -Recurse switch, depth-only control
 - **v1.6** - File Explorer-like tree hierarchy display with visual characters
 - **v1.7** - Separated display depth from calculation depth for accurate totals
+- **v1.8** - Added pause functionality to prevent elevated windows from auto-closing
 
 ---
 

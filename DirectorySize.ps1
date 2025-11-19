@@ -120,6 +120,7 @@ function Start-ElevatedScript {
         This function uses Start-Process with the -Verb RunAs parameter to launch
         a new PowerShell session with elevated privileges. It preserves the original
         script arguments and triggers the Windows User Account Control (UAC) prompt.
+        The elevated session will pause at the end to prevent automatic window closure.
     
     .PARAMETER ScriptPath
         The full path to the PowerShell script file that should be elevated.
@@ -142,6 +143,7 @@ function Start-ElevatedScript {
         - Triggers UAC prompt - user must approve elevation
         - Original script process exits after starting elevated instance
         - Uses -NoProfile for faster startup and -ExecutionPolicy Bypass for reliability
+        - Elevated window will pause at the end to allow user to review results
     
     .LINK
         https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.management/start-process
@@ -154,7 +156,9 @@ function Start-ElevatedScript {
     
     try {
         $argumentString = $Arguments -join ' '
-        Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`" $argumentString" -Verb RunAs
+        # Add pause command to prevent window from closing in elevated mode
+        $pauseCommand = "; Write-Host ''; Write-Host 'Press any key to close this window...' -ForegroundColor Yellow; Read-Host"
+        Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command \"& '$ScriptPath' $argumentString$pauseCommand\"" -Verb RunAs
         exit
     }
     catch {
@@ -492,4 +496,11 @@ if ($restrictedDirCount -gt 0) {
     if (-not $isAdmin) {
         Write-Host "Tip: Run with -RequireAdmin to automatically request administrator privileges" -ForegroundColor Cyan
     }
+}
+
+# Check if this is an elevated session that was auto-started (prevent window from closing)
+if ($isAdmin -and $RequireAdmin -and $MyInvocation.MyCommand.Path) {
+    Write-Host ""
+    Write-Host "Analysis complete. Press any key to close this window..." -ForegroundColor Yellow
+    $null = Read-Host
 }
