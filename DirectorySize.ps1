@@ -327,25 +327,25 @@ function Get-DirectorySize {
                 try {
                     # Prepare parent prefixes for next level (only if displaying this level)
                     $newParentPrefixes = $ParentPrefixes + @(
-                        # Always calculate subdirectory size, but control display depth
-                        $subDirSize = Get-DirectorySize -DirectoryPath $dir.FullName -Level ($Level + 1) -MaxDepth $MaxDepth -DisplayDepth $DisplayDepth -RestrictedDirs $RestrictedDirs -ParentPrefixes $newParentPrefixes -IsLast $isLastDir -FastMode $FastMode
+                        if ($IsLast) { "    " } else { "│   " }
+                    )
                     
-                        # Always calculate subdirectory size, but control display depth
-                        $subDirSize = Get-DirectorySize -DirectoryPath $dir.FullName -Level ($Level + 1) -MaxDepth $MaxDepth -DisplayDepth $DisplayDepth -RestrictedDirs $RestrictedDirs -ParentPrefixes $newParentPrefixes -IsLast $isLastDir
-                        $totalSize += $subDirSize
-                    }
-                    catch [System.UnauthorizedAccessException] {
-                        $hasAccessIssues = $true
-                        $RestrictedDirs.Value++
-                        # Quiet operation by default - no warning messages for cleaner output
-                    }
-                    catch {
-                        # Quiet operation by default - no error messages for cleaner output
-                    }
+                    # Always calculate subdirectory size, but control display depth
+                    $subDirSize = Get-DirectorySize -DirectoryPath $dir.FullName -Level ($Level + 1) -MaxDepth $MaxDepth -DisplayDepth $DisplayDepth -RestrictedDirs $RestrictedDirs -ParentPrefixes $newParentPrefixes -IsLast $isLastDir -FastMode $FastMode
+                    $totalSize += $subDirSize
+                }
+                catch [System.UnauthorizedAccessException] {
+                    $hasAccessIssues = $true
+                    $RestrictedDirs.Value++
+                    # Quiet operation by default - no warning messages for cleaner output
+                }
+                catch {
+                    # Quiet operation by default - no error messages for cleaner output
                 }
             }
+        }
         
-            # Display directory information only if within display depth (or unlimited display)
+        # Display directory information only if within display depth (or unlimited display)
             $shouldDisplay = ($DisplayDepth -eq 0) -or ($Level -lt $DisplayDepth) -or ($Level -eq 0)
             if ($shouldDisplay -and ($DisplayDepth -ne 1 -or $Level -eq 0)) {
                 # Format size for display
@@ -367,20 +367,20 @@ function Get-DirectorySize {
                 Write-Host $accessIndicator
             }
         
-            return $totalSize
-        }
-        catch [System.UnauthorizedAccessException] {
-            $RestrictedDirs.Value++
-            # Quiet operation by default - no warning for cleaner output
-            return 0
-        }
-        catch {
-            # Quiet operation by default - no error messages for cleaner output
-            return 0
-        }
+        return $totalSize
     }
+    catch [System.UnauthorizedAccessException] {
+        $RestrictedDirs.Value++
+        # Quiet operation by default - no warning for cleaner output
+        return 0
+    }
+    catch {
+        # Quiet operation by default - no error messages for cleaner output
+        return 0
+    }
+}
 
-    function Initialize-ProgressIndicator {
+function Initialize-ProgressIndicator {
         <#
     .SYNOPSIS
         Initializes the progress indicator for directory analysis.
