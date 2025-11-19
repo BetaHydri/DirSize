@@ -346,26 +346,26 @@ function Get-DirectorySize {
         }
         
         # Display directory information only if within display depth (or unlimited display)
-            $shouldDisplay = ($DisplayDepth -eq 0) -or ($Level -lt $DisplayDepth) -or ($Level -eq 0)
-            if ($shouldDisplay -and ($DisplayDepth -ne 1 -or $Level -eq 0)) {
-                # Format size for display
-                $sizeFormatted = Format-Size $totalSize
+        $shouldDisplay = ($DisplayDepth -eq 0) -or ($Level -lt $DisplayDepth) -or ($Level -eq 0)
+        if ($shouldDisplay -and ($DisplayDepth -ne 1 -or $Level -eq 0)) {
+            # Format size for display
+            $sizeFormatted = Format-Size $totalSize
             
-                # Generate tree prefix (no prefix for root level)
-                $treePrefix = if ($Level -eq 0) { "" } else { Get-TreePrefix -Level $Level -IsLast $IsLast -ParentPrefixes $ParentPrefixes }
+            # Generate tree prefix (no prefix for root level)
+            $treePrefix = if ($Level -eq 0) { "" } else { Get-TreePrefix -Level $Level -IsLast $IsLast -ParentPrefixes $ParentPrefixes }
             
-                # Get color based on directory size
-                $sizeColor = Get-SizeColor $totalSize
+            # Get color based on directory size
+            $sizeColor = Get-SizeColor $totalSize
             
-                # Display current directory info with access status and size-based coloring
-                $accessIndicator = if ($hasAccessIssues) { " [!]" } else { "" }
-                $directoryName = Split-Path $DirectoryPath -Leaf
+            # Display current directory info with access status and size-based coloring
+            $accessIndicator = if ($hasAccessIssues) { " [!]" } else { "" }
+            $directoryName = Split-Path $DirectoryPath -Leaf
             
-                # Display with color coding
-                Write-Host "$treePrefix$directoryName - " -NoNewline
-                Write-Host $sizeFormatted -ForegroundColor $sizeColor -NoNewline
-                Write-Host $accessIndicator
-            }
+            # Display with color coding
+            Write-Host "$treePrefix$directoryName - " -NoNewline
+            Write-Host $sizeFormatted -ForegroundColor $sizeColor -NoNewline
+            Write-Host $accessIndicator
+        }
         
         return $totalSize
     }
@@ -381,7 +381,7 @@ function Get-DirectorySize {
 }
 
 function Initialize-ProgressIndicator {
-        <#
+    <#
     .SYNOPSIS
         Initializes the progress indicator for directory analysis.
     
@@ -390,14 +390,14 @@ function Initialize-ProgressIndicator {
         analysis is in progress. Uses a global variable to track state.
     #>
     
-        $Global:ProgressCounter = 0
-        $Global:ProgressChars = @('|', '/', '-', '\')
-        Write-Host "Analyzing directories " -NoNewline
-        Write-Host "|" -NoNewline  # Initial character
-    }
+    $Global:ProgressCounter = 0
+    $Global:ProgressChars = @('|', '/', '-', '\')
+    Write-Host "Analyzing directories " -NoNewline
+    Write-Host "|" -NoNewline  # Initial character
+}
 
-    function Update-ProgressIndicator {
-        <#
+function Update-ProgressIndicator {
+    <#
     .SYNOPSIS
         Updates the rotating cursor progress indicator.
     
@@ -406,16 +406,16 @@ function Initialize-ProgressIndicator {
         Call this function periodically during long-running operations.
     #>
     
-        if ($Global:ProgressCounter -ne $null) {
-            # Move cursor back one position, write new character, then back again
-            Write-Host "`b" -NoNewline  # Backspace
-            $Global:ProgressCounter++
-            Write-Host "$($Global:ProgressChars[$Global:ProgressCounter % 4])" -NoNewline
-        }
+    if ($Global:ProgressCounter -ne $null) {
+        # Move cursor back one position, write new character, then back again
+        Write-Host "`b" -NoNewline  # Backspace
+        $Global:ProgressCounter++
+        Write-Host "$($Global:ProgressChars[$Global:ProgressCounter % 4])" -NoNewline
     }
+}
 
-    function Complete-ProgressIndicator {
-        <#
+function Complete-ProgressIndicator {
+    <#
     .SYNOPSIS
         Completes the progress indicator and cleans up the display.
     
@@ -424,16 +424,16 @@ function Initialize-ProgressIndicator {
         Cleans up global progress variables.
     #>
     
-        if ($Global:ProgressCounter -ne $null) {
-            Write-Host "`b" -NoNewline  # Erase the spinner
-            Write-Host "Complete!" -ForegroundColor Green
-            Remove-Variable -Name ProgressCounter -Scope Global -ErrorAction SilentlyContinue
-            Remove-Variable -Name ProgressChars -Scope Global -ErrorAction SilentlyContinue
-        }
+    if ($Global:ProgressCounter -ne $null) {
+        Write-Host "`b" -NoNewline  # Erase the spinner
+        Write-Host "Complete!" -ForegroundColor Green
+        Remove-Variable -Name ProgressCounter -Scope Global -ErrorAction SilentlyContinue
+        Remove-Variable -Name ProgressChars -Scope Global -ErrorAction SilentlyContinue
     }
+}
 
-    function Get-SizeColor {
-        <#
+function Get-SizeColor {
+    <#
     .SYNOPSIS
         Determines the appropriate color for displaying directory sizes based on size thresholds.
     
@@ -463,27 +463,27 @@ function Initialize-ProgressIndicator {
         - Yellow: 1GB to 5GB (medium-large)
         - White: Under 1GB (normal)
     #>
-        param(
-            [Parameter(Mandatory = $true)]
-            [long]$Size
-        )
+    param(
+        [Parameter(Mandatory = $true)]
+        [long]$Size
+    )
     
-        if ($Size -ge 10GB) {
-            return "Red"        # Very large directories (>10GB)
-        }
-        elseif ($Size -ge 5GB) {
-            return "Magenta"    # Large directories (5-10GB)
-        }
-        elseif ($Size -ge 1GB) {
-            return "Yellow"     # Medium-large directories (1-5GB)
-        }
-        else {
-            return "White"      # Normal directories (<1GB)
-        }
+    if ($Size -ge 10GB) {
+        return "Red"        # Very large directories (>10GB)
     }
+    elseif ($Size -ge 5GB) {
+        return "Magenta"    # Large directories (5-10GB)
+    }
+    elseif ($Size -ge 1GB) {
+        return "Yellow"     # Medium-large directories (1-5GB)
+    }
+    else {
+        return "White"      # Normal directories (<1GB)
+    }
+}
 
-    function Format-Size {
-        <#
+function Format-Size {
+    <#
     .SYNOPSIS
         Converts byte values to human-readable size format.
     
@@ -521,82 +521,82 @@ function Initialize-ProgressIndicator {
         - Shows exact byte count for values under 1KB
         - Supports sizes up to terabytes
     #>
-        param(
-            [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
-            [long]$Size
-        )
+    param(
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        [long]$Size
+    )
     
-        if ($Size -ge 1TB) { return "{0:N2} TB" -f ($Size / 1TB) }
-        elseif ($Size -ge 1GB) { return "{0:N2} GB" -f ($Size / 1GB) }
-        elseif ($Size -ge 1MB) { return "{0:N2} MB" -f ($Size / 1MB) }
-        elseif ($Size -ge 1KB) { return "{0:N2} KB" -f ($Size / 1KB) }
-        else { return "$Size Bytes" }
-    }
+    if ($Size -ge 1TB) { return "{0:N2} TB" -f ($Size / 1TB) }
+    elseif ($Size -ge 1GB) { return "{0:N2} GB" -f ($Size / 1GB) }
+    elseif ($Size -ge 1MB) { return "{0:N2} MB" -f ($Size / 1MB) }
+    elseif ($Size -ge 1KB) { return "{0:N2} KB" -f ($Size / 1KB) }
+    else { return "$Size Bytes" }
+}
 
-    # Set depth description based on parameter
-    $DepthDescription = if ($Depth -eq 0) { "Unlimited" } elseif ($Depth -eq 1) { "Current directory only" } else { "$Depth levels" }
+# Set depth description based on parameter
+$DepthDescription = if ($Depth -eq 0) { "Unlimited" } elseif ($Depth -eq 1) { "Current directory only" } else { "$Depth levels" }
 
-    # Check administrator privileges
-    $isAdmin = Test-IsAdministrator
+# Check administrator privileges
+$isAdmin = Test-IsAdministrator
 
-    if ($RequireAdmin -and -not $isAdmin) {
-        Write-Host "Error: Administrator privileges required but not detected." -ForegroundColor Red
-        Write-Host "Please run PowerShell as Administrator and try again." -ForegroundColor Yellow
-        Write-Host "Right-click PowerShell and select 'Run as Administrator'" -ForegroundColor Gray
-        exit 1
-    }
+if ($RequireAdmin -and -not $isAdmin) {
+    Write-Host "Error: Administrator privileges required but not detected." -ForegroundColor Red
+    Write-Host "Please run PowerShell as Administrator and try again." -ForegroundColor Yellow
+    Write-Host "Right-click PowerShell and select 'Run as Administrator'" -ForegroundColor Gray
+    exit 1
+}
 
-    # Validate path
-    if (-not (Test-Path $Path)) {
-        Write-Error "Path '$Path' does not exist."
-        exit 1
-    }
+# Validate path
+if (-not (Test-Path $Path)) {
+    Write-Error "Path '$Path' does not exist."
+    exit 1
+}
 
-    # Display header information
-    Write-Host "Directory Size Analysis" -ForegroundColor Cyan
-    Write-Host "======================" -ForegroundColor Cyan
-    Write-Host "Path: $Path"
-    Write-Host "Analysis Depth: $DepthDescription"
-    Write-Host "Administrator: $isAdmin"
+# Display header information
+Write-Host "Directory Size Analysis" -ForegroundColor Cyan
+Write-Host "======================" -ForegroundColor Cyan
+Write-Host "Path: $Path"
+Write-Host "Analysis Depth: $DepthDescription"
+Write-Host "Administrator: $isAdmin"
+if (-not $isAdmin) {
+    Write-Host "Note: Some directories may require administrator privileges to access." -ForegroundColor Yellow
+}
+Write-Host ""
+
+# Initialize progress indicator
+Initialize-ProgressIndicator
+
+# Initialize counter for restricted directories
+$restrictedDirCount = 0
+
+$totalSize = Get-DirectorySize -DirectoryPath $Path -MaxDepth 0 -DisplayDepth $Depth -RestrictedDirs ([ref]$restrictedDirCount) -FastMode $FastMode
+
+# Complete progress indicator
+Complete-ProgressIndicator
+
+$totalFormatted = Format-Size $totalSize
+$totalColor = Get-SizeColor $totalSize
+
+Write-Host ""
+Write-Host "Total Size: " -NoNewline
+Write-Host $totalFormatted -ForegroundColor $totalColor
+
+if ($restrictedDirCount -gt 0) {
+    Write-Host "Restricted Directories: $restrictedDirCount" -ForegroundColor Yellow
+    Write-Host "Note: [!] indicates directories with access restrictions" -ForegroundColor Gray
+    
     if (-not $isAdmin) {
-        Write-Host "Note: Some directories may require administrator privileges to access." -ForegroundColor Yellow
+        Write-Host "Tip: Run with -RequireAdmin to ensure administrator privileges" -ForegroundColor Cyan
     }
-    Write-Host ""
+}
 
-    # Initialize progress indicator
-    Initialize-ProgressIndicator
-
-    # Initialize counter for restricted directories
-    $restrictedDirCount = 0
-
-    $totalSize = Get-DirectorySize -DirectoryPath $Path -MaxDepth 0 -DisplayDepth $Depth -RestrictedDirs ([ref]$restrictedDirCount) -FastMode $FastMode
-
-    # Complete progress indicator
-    Complete-ProgressIndicator
-
-    $totalFormatted = Format-Size $totalSize
-    $totalColor = Get-SizeColor $totalSize
-
-    Write-Host ""
-    Write-Host "Total Size: " -NoNewline
-    Write-Host $totalFormatted -ForegroundColor $totalColor
-
-    if ($restrictedDirCount -gt 0) {
-        Write-Host "Restricted Directories: $restrictedDirCount" -ForegroundColor Yellow
-        Write-Host "Note: [!] indicates directories with access restrictions" -ForegroundColor Gray
-    
-        if (-not $isAdmin) {
-            Write-Host "Tip: Run with -RequireAdmin to ensure administrator privileges" -ForegroundColor Cyan
-        }
-    }
-
-    # Display color legend
-    Write-Host ""
-    Write-Host "Size Color Legend:" -ForegroundColor Gray
-    Write-Host "  " -NoNewline
-    Write-Host "Red" -ForegroundColor Red -NoNewline
-    Write-Host " = Very Large (>10GB)  " -NoNewline -ForegroundColor Gray
-    Write-Host "Magenta" -ForegroundColor Magenta -NoNewline
-    Write-Host " = Large (5-10GB)  " -NoNewline -ForegroundColor Gray
-    Write-Host "Yellow" -ForegroundColor Yellow -NoNewline
-    Write-Host " = Medium (1-5GB)" -ForegroundColor Gray
+# Display color legend
+Write-Host ""
+Write-Host "Size Color Legend:" -ForegroundColor Gray
+Write-Host "  " -NoNewline
+Write-Host "Red" -ForegroundColor Red -NoNewline
+Write-Host " = Very Large (>10GB)  " -NoNewline -ForegroundColor Gray
+Write-Host "Magenta" -ForegroundColor Magenta -NoNewline
+Write-Host " = Large (5-10GB)  " -NoNewline -ForegroundColor Gray
+Write-Host "Yellow" -ForegroundColor Yellow -NoNewline
+Write-Host " = Medium (1-5GB)" -ForegroundColor Gray
