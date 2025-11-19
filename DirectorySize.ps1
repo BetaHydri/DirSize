@@ -360,8 +360,9 @@ function Initialize-ProgressIndicator {
     #>
     
     $Global:ProgressCounter = 0
-    $Global:ProgressChars = @('|', '/', '-', '\\')
+    $Global:ProgressChars = @('|', '/', '-', '\')
     Write-Host "Analyzing directories " -NoNewline
+    Write-Host "|" -NoNewline  # Initial character
 }
 
 function Update-ProgressIndicator {
@@ -375,9 +376,10 @@ function Update-ProgressIndicator {
     #>
     
     if ($Global:ProgressCounter -ne $null) {
-        # Erase previous character and show new one
-        Write-Host "`b$($Global:ProgressChars[$Global:ProgressCounter % 4])" -NoNewline
+        # Move cursor back one position, write new character, then back again
+        Write-Host "`b" -NoNewline  # Backspace
         $Global:ProgressCounter++
+        Write-Host "$($Global:ProgressChars[$Global:ProgressCounter % 4])" -NoNewline
     }
 }
 
@@ -392,7 +394,7 @@ function Complete-ProgressIndicator {
     #>
     
     if ($Global:ProgressCounter -ne $null) {
-        Write-Host "`b " -NoNewline  # Erase the cursor
+        Write-Host "`b" -NoNewline  # Erase the spinner
         Write-Host "Complete!" -ForegroundColor Green
         Remove-Variable -Name ProgressCounter -Scope Global -ErrorAction SilentlyContinue
         Remove-Variable -Name ProgressChars -Scope Global -ErrorAction SilentlyContinue
