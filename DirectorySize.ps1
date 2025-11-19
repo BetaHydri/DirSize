@@ -11,9 +11,9 @@
 .PARAMETER Path
     The directory path to analyze. This parameter is mandatory.
 
-.PARAMETER Recurse
-    Include subdirectories in the size calculation. When enabled, the script will
-    traverse all subdirectories and provide a hierarchical view of folder-level disk usage.
+.PARAMETER Depth
+    Specify the maximum depth level for directory traversal (1 = current directory only,
+    2 = one level deep, etc.). Use 0 for unlimited depth. Default is 1.
 
 .PARAMETER RequireAdmin
     Force the script to run with administrator privileges. If not running as admin,
@@ -25,19 +25,19 @@
 
 .EXAMPLE
     .\DirectorySize.ps1 -Path "C:\Users\Documents"
-    Analyzes the Documents directory showing only folder sizes (no individual files).
+    Analyzes the Documents directory (current level only - default behavior).
 
 .EXAMPLE
-    .\DirectorySize.ps1 -Path "C:\Program Files" -Recurse
-    Recursively analyzes the Program Files directory showing hierarchical folder structure.
+    .\DirectorySize.ps1 -Path "C:\Program Files" -Depth 2
+    Analyzes the Program Files directory up to 2 levels deep.
 
 .EXAMPLE
-    .\DirectorySize.ps1 -Path "C:\Windows" -Recurse -RequireAdmin
-    Analyzes Windows directory with forced administrator privileges, displaying folder totals only.
+    .\DirectorySize.ps1 -Path "C:\Windows" -Depth 0 -RequireAdmin
+    Analyzes Windows directory with unlimited depth and forced administrator privileges.
 
 .EXAMPLE
-    .\DirectorySize.ps1 -Path "D:\" -Recurse -SkipRestrictedDirs
-    Scans entire D: drive recursively with suppressed access warnings.
+    .\DirectorySize.ps1 -Path "D:\" -Depth 3 -SkipRestrictedDirs
+    Scans D: drive up to 3 levels deep with suppressed access warnings.
 
 .NOTES
     File Name      : DirectorySize.ps1
@@ -58,8 +58,9 @@ param(
         })]
     [string]$Path,
     
-    [Parameter(HelpMessage = "Include subdirectories in the analysis")]
-    [switch]$Recurse,
+    [Parameter(HelpMessage = "Maximum depth level (1=current only, 2=one level deep, 0=unlimited)")]
+    [ValidateRange(0, 100)]
+    [int]$Depth = 1,
     
     [Parameter(HelpMessage = "Force administrator privileges (auto-elevate if needed)")]
     [switch]$RequireAdmin,
@@ -176,7 +177,11 @@ function Get-DirectorySize {
     .PARAMETER Level
         Internal parameter for recursion depth tracking (controls indentation).
         Default is 0 for root level.
-    
+
+    .PARAMETER MaxDepth
+        Maximum allowed depth for recursion. 0 means unlimited depth.
+        Used to control how deep the analysis goes.
+
     .PARAMETER RestrictedDirs
         Reference to counter for tracking directories with access restrictions.
         Used to maintain count across recursive calls.
@@ -207,6 +212,9 @@ function Get-DirectorySize {
         [Parameter()]
         [int]$Level = 0,
         
+        [Parameter()]
+        [int]$MaxDepth = 0,
+        
         [Parameter(Mandatory = $true)]
         [ref]$RestrictedDirs
     )
@@ -227,11 +235,11 @@ function Get-DirectorySize {
         # Start with files in current directory
         $totalSize = $fileSize
         
-        # Process subdirectories if recursion is enabled
-        if ($Recurse -and $directories) {
+        # Process subdirectories if within depth limit
+        if (($MaxDepth -eq 0 -or $Level -lt ($MaxDepth - 1)) -and $directories) {
             foreach ($dir in $directories) {
                 try {
-                    $subDirSize = Get-DirectorySize -DirectoryPath $dir.FullName -Level ($Level + 1) -RestrictedDirs $RestrictedDirs
+                    $subDirSize = Get-DirectorySize -DirectoryPath $dir.FullName -Level ($Level + 1) -MaxDepth $MaxDepth -RestrictedDirs $RestrictedDirs
                     $totalSize += $subDirSize
                 }
                 catch [System.UnauthorizedAccessException] {
@@ -250,8 +258,8 @@ function Get-DirectorySize {
             }
         }
         
-        # Display directory information (always show when recursing, or if root level)
-        if ($Recurse -or $Level -eq 0) {
+        # Display directory information (always show when analyzing with depth, or if root level)
+        if ($MaxDepth -ne 1 -or $Level -eq 0) {
             # Format size for display
             $sizeFormatted = Format-Size $totalSize
             
@@ -328,6 +336,9 @@ function Format-Size {
     else { return "$Size Bytes" }
 }
 
+# Set depth description based on parameter
+$DepthDescription = if ($Depth -eq 0) { "Unlimited" } elseif ($Depth -eq 1) { "Current directory only" } else { "$Depth levels" }
+
 # Check administrator privileges
 $isAdmin = Test-IsAdministrator
 
@@ -339,7 +350,7 @@ if ($RequireAdmin -and -not $isAdmin) {
         Write-Host "Attempting to restart with administrator privileges..." -ForegroundColor Yellow
         $scriptArgs = @()
         $scriptArgs += "-Path `"$Path`""
-        if ($Recurse) { $scriptArgs += "-Recurse" }
+        if ($Depth -ne 1) { $scriptArgs += "-Depth $Depth" }
         if ($SkipRestrictedDirs) { $scriptArgs += "-SkipRestrictedDirs" }
         $scriptArgs += "-RequireAdmin"
         
@@ -361,7 +372,7 @@ if (-not (Test-Path $Path)) {
 Write-Host "Directory Size Analysis" -ForegroundColor Cyan
 Write-Host "======================" -ForegroundColor Cyan
 Write-Host "Path: $Path"
-Write-Host "Recursive: $Recurse"
+Write-Host "Analysis Depth: $DepthDescription"
 Write-Host "Administrator: $isAdmin"
 if (-not $isAdmin) {
     Write-Host "Note: Some directories may require administrator privileges to access." -ForegroundColor Yellow
@@ -371,7 +382,7 @@ Write-Host ""
 # Initialize counter for restricted directories
 $restrictedDirCount = 0
 
-$totalSize = Get-DirectorySize -DirectoryPath $Path -RestrictedDirs ([ref]$restrictedDirCount)
+$totalSize = Get-DirectorySize -DirectoryPath $Path -MaxDepth $Depth -RestrictedDirs ([ref]$restrictedDirCount)
 $totalFormatted = Format-Size $totalSize
 
 Write-Host ""

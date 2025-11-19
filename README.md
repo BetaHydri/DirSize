@@ -5,37 +5,43 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 ## 🌟 Features
 
 - **Directory-Only Analysis** - Shows folder sizes without individual file listings
-- **Recursive Directory Analysis** - Calculate sizes of directories and their subdirectories
+- **Flexible Depth Control** - Specify exact analysis depth from current directory only to unlimited
 - **Administrator Privilege Detection** - Automatically detects and handles elevated permissions
 - **Auto-Elevation** - Can restart itself with administrator privileges when needed
 - **Access Control Handling** - Gracefully handles permission-denied scenarios
 - **Formatted Output** - Human-readable size formatting (KB, MB, GB, TB)
 - **Visual Indicators** - Shows directories with access restrictions
-- **Flexible Options** - Multiple parameters for different use cases
+- **Simple Interface** - Clean parameter set focused on depth control
 
 ## 🚀 Quick Start
 
 ### Basic Usage
 
 ```powershell
-# Analyze a single directory
+# Analyze current directory only (default)
 .\DirectorySize.ps1 -Path "C:\Users\YourName\Documents"
 
-# Recursive analysis
-.\DirectorySize.ps1 -Path "C:\Program Files" -Recurse
+# Analyze with subdirectories (2 levels deep)
+.\DirectorySize.ps1 -Path "C:\Program Files" -Depth 2
+
+# Unlimited depth analysis
+.\DirectorySize.ps1 -Path "D:\Projects" -Depth 0
 ```
 
 ### Advanced Usage
 
 ```powershell
-# Force administrator mode (auto-elevate if possible)
-.\DirectorySize.ps1 -Path "C:\Windows" -Recurse -RequireAdmin
+# Force administrator mode with unlimited depth
+.\DirectorySize.ps1 -Path "C:\Windows" -Depth 0 -RequireAdmin
 
-# Suppress warnings for restricted directories
-.\DirectorySize.ps1 -Path "C:\" -Recurse -SkipRestrictedDirs
+# Limit analysis to 2 levels deep
+.\DirectorySize.ps1 -Path "C:\Program Files" -Depth 2
 
-# Combined options
-.\DirectorySize.ps1 -Path "C:\Program Files" -Recurse -RequireAdmin -SkipRestrictedDirs
+# Deep analysis with quiet mode (3 levels)
+.\DirectorySize.ps1 -Path "C:\" -Depth 3 -SkipRestrictedDirs
+
+# System-wide analysis with all options
+.\DirectorySize.ps1 -Path "C:\Windows\System32" -Depth 0 -RequireAdmin -SkipRestrictedDirs
 ```
 
 ## 📋 Parameters
@@ -43,9 +49,31 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `-Path` | String | **Required.** The directory path to analyze |
-| `-Recurse` | Switch | Include subdirectories in the analysis |
+| `-Depth` | Integer | Analysis depth level (1=current only, 2=one level deep, 0=unlimited). Default: 1 |
 | `-RequireAdmin` | Switch | Force administrator privileges (auto-elevate if needed) |
 | `-SkipRestrictedDirs` | Switch | Suppress warning messages for access-denied directories |
+
+## 🎯 Depth Control
+
+The `-Depth` parameter provides precise control over analysis depth:
+
+- **`-Depth 1`** (Default): Current directory only - shows total size without subdirectory breakdown
+- **`-Depth 2`**: Current directory + one level of subdirectories
+- **`-Depth 3`**: Current directory + two levels of subdirectories
+- **`-Depth 0`**: Unlimited depth - analyzes entire directory tree
+
+### Depth Examples
+
+```powershell
+# Show only the total size of Program Files
+.\DirectorySize.ps1 -Path "C:\Program Files" -Depth 1
+
+# Show Program Files and immediate subdirectories
+.\DirectorySize.ps1 -Path "C:\Program Files" -Depth 2
+
+# Complete analysis of all subdirectories
+.\DirectorySize.ps1 -Path "C:\Program Files" -Depth 0
+```
 
 ## 🔐 Administrator Privileges
 
@@ -71,7 +99,7 @@ The script provides color-coded, formatted output focused on directories only:
 Directory Size Analysis
 ======================
 Path: C:\Program Files
-Recursive: True
+Analysis Depth: 2 levels
 Administrator: True
 
 Program Files - 15.2 GB
@@ -183,6 +211,8 @@ If you encounter issues:
 - **v1.1** - Added administrator privilege handling and auto-elevation
 - **v1.2** - Enhanced error handling and visual indicators
 - **v1.3** - Directory-only output for cleaner folder-level analysis
+- **v1.4** - Added depth control parameter with flexible recursion options
+- **v1.5** - Simplified interface by removing -Recurse switch, depth-only control
 
 ---
 
