@@ -20,6 +20,10 @@
     Require the script to run with administrator privileges. If not running as admin,
     the script will exit with an error message instead of continuing with limited access.
 
+.PARAMETER FastMode
+    Use optimized enumeration for better performance. Gets files and directories in
+    a single call and reduces progress updates. May use more memory for large directories.
+
 .EXAMPLE
     .\DirectorySize.ps1 -Path "C:\Users\Documents"
     Analyzes the Documents directory (current level only - default behavior).
@@ -37,6 +41,10 @@
 .EXAMPLE
     .\DirectorySize.ps1 -Path "D:\" -Depth 3
     Scans D: drive up to 3 levels deep with clean output (warnings suppressed by default).
+
+.EXAMPLE
+    .\DirectorySize.ps1 -Path "C:\Program Files" -Depth 2 -FastMode
+    Analyzes Program Files with optimized performance for faster results.
 
 .NOTES
     File Name      : DirectorySize.ps1
@@ -62,7 +70,10 @@ param(
     [int]$Depth = 1,
     
     [Parameter(HelpMessage = "Require administrator privileges (exit with error if not admin)")]
-    [switch]$RequireAdmin
+    [switch]$RequireAdmin,
+    
+    [Parameter(HelpMessage = "Use faster enumeration (may use more memory for large directories)")]
+    [switch]$FastMode
 )
 
 function Test-IsAdministrator {
@@ -262,95 +273,115 @@ function Get-DirectorySize {
         [string[]]$ParentPrefixes = @(),
         
         [Parameter()]
-        [bool]$IsLast = $true
+        [bool]$IsLast = $true,
+        
+        [Parameter()]
+        [bool]$FastMode = $false
     )
     
     $totalSize = 0
     $hasAccessIssues = $false
     
     try {
-        # Get files in current directory (for size calculation only)
-        $files = Get-ChildItem -Path $DirectoryPath -File -ErrorAction SilentlyContinue
-        $fileSize = ($files | Measure-Object -Property Length -Sum).Sum
-        if ($null -eq $fileSize) { $fileSize = 0 }
+        # Optimized file enumeration - get files and directories in one call when possible
+        if ($FastMode) {
+            # Fast mode: Get all items at once (uses more memory but faster)
+            $allItems = Get-ChildItem -Path $DirectoryPath -ErrorAction SilentlyContinue
+            $files = $allItems | Where-Object { -not $_.PSIsContainer }
+            $directories = $allItems | Where-Object { $_.PSIsContainer }
+        }
+        else {
+            # Standard mode: Separate calls (uses less memory)
+            $files = Get-ChildItem -Path $DirectoryPath -File -ErrorAction SilentlyContinue
+            $directories = Get-ChildItem -Path $DirectoryPath -Directory -ErrorAction SilentlyContinue
+        }
         
-        # Get subdirectories
-        $directories = Get-ChildItem -Path $DirectoryPath -Directory -ErrorAction SilentlyContinue
+        # Optimized file size calculation
+        if ($files.Count -gt 0) {
+            $fileSize = ($files | Measure-Object -Property Length -Sum).Sum
+            if ($null -eq $fileSize) { $fileSize = 0 }
+        }
+        else {
+            $fileSize = 0
+        }
         
         # Start with files in current directory
         $totalSize = $fileSize
         
         # Always process ALL subdirectories for accurate size calculation
-        if ($directories) {
+        if ($directories -and $directories.Count -gt 0) {
             $dirCount = $directories.Count
+            
+            # Reduced progress updates for better performance
+            $progressUpdateInterval = if ($FastMode) { 10 } else { 5 }
             
             for ($i = 0; $i -lt $dirCount; $i++) {
                 $dir = $directories[$i]
                 $isLastDir = ($i -eq ($dirCount - 1))
                 
-                # Update progress indicator every few directories
-                if ($Level -le 2 -and ($i % 3 -eq 0)) {
+                # Update progress less frequently for better performance
+                if ($Level -le 1 -and ($i % $progressUpdateInterval -eq 0)) {
                     Update-ProgressIndicator
                 }
                 
                 try {
                     # Prepare parent prefixes for next level (only if displaying this level)
                     $newParentPrefixes = $ParentPrefixes + @(
-                        if ($IsLast) { "    " } else { "│   " }
-                    )
+                        # Always calculate subdirectory size, but control display depth
+                        $subDirSize = Get-DirectorySize -DirectoryPath $dir.FullName -Level ($Level + 1) -MaxDepth $MaxDepth -DisplayDepth $DisplayDepth -RestrictedDirs $RestrictedDirs -ParentPrefixes $newParentPrefixes -IsLast $isLastDir -FastMode $FastMode
                     
-                    # Always calculate subdirectory size, but control display depth
-                    $subDirSize = Get-DirectorySize -DirectoryPath $dir.FullName -Level ($Level + 1) -MaxDepth $MaxDepth -DisplayDepth $DisplayDepth -RestrictedDirs $RestrictedDirs -ParentPrefixes $newParentPrefixes -IsLast $isLastDir
-                    $totalSize += $subDirSize
-                }
-                catch [System.UnauthorizedAccessException] {
-                    $hasAccessIssues = $true
-                    $RestrictedDirs.Value++
-                    # Quiet operation by default - no warning messages for cleaner output
-                }
-                catch {
-                    # Quiet operation by default - no error messages for cleaner output
+                        # Always calculate subdirectory size, but control display depth
+                        $subDirSize = Get-DirectorySize -DirectoryPath $dir.FullName -Level ($Level + 1) -MaxDepth $MaxDepth -DisplayDepth $DisplayDepth -RestrictedDirs $RestrictedDirs -ParentPrefixes $newParentPrefixes -IsLast $isLastDir
+                        $totalSize += $subDirSize
+                    }
+                    catch [System.UnauthorizedAccessException] {
+                        $hasAccessIssues = $true
+                        $RestrictedDirs.Value++
+                        # Quiet operation by default - no warning messages for cleaner output
+                    }
+                    catch {
+                        # Quiet operation by default - no error messages for cleaner output
+                    }
                 }
             }
-        }
         
-        # Display directory information only if within display depth (or unlimited display)
-        $shouldDisplay = ($DisplayDepth -eq 0) -or ($Level -lt $DisplayDepth) -or ($Level -eq 0)
-        if ($shouldDisplay -and ($DisplayDepth -ne 1 -or $Level -eq 0)) {
-            # Format size for display
-            $sizeFormatted = Format-Size $totalSize
+            # Display directory information only if within display depth (or unlimited display)
+            $shouldDisplay = ($DisplayDepth -eq 0) -or ($Level -lt $DisplayDepth) -or ($Level -eq 0)
+            if ($shouldDisplay -and ($DisplayDepth -ne 1 -or $Level -eq 0)) {
+                # Format size for display
+                $sizeFormatted = Format-Size $totalSize
             
-            # Generate tree prefix (no prefix for root level)
-            $treePrefix = if ($Level -eq 0) { "" } else { Get-TreePrefix -Level $Level -IsLast $IsLast -ParentPrefixes $ParentPrefixes }
+                # Generate tree prefix (no prefix for root level)
+                $treePrefix = if ($Level -eq 0) { "" } else { Get-TreePrefix -Level $Level -IsLast $IsLast -ParentPrefixes $ParentPrefixes }
             
-            # Get color based on directory size
-            $sizeColor = Get-SizeColor $totalSize
+                # Get color based on directory size
+                $sizeColor = Get-SizeColor $totalSize
             
-            # Display current directory info with access status and size-based coloring
-            $accessIndicator = if ($hasAccessIssues) { " [!]" } else { "" }
-            $directoryName = Split-Path $DirectoryPath -Leaf
+                # Display current directory info with access status and size-based coloring
+                $accessIndicator = if ($hasAccessIssues) { " [!]" } else { "" }
+                $directoryName = Split-Path $DirectoryPath -Leaf
             
-            # Display with color coding
-            Write-Host "$treePrefix$directoryName - " -NoNewline
-            Write-Host $sizeFormatted -ForegroundColor $sizeColor -NoNewline
-            Write-Host $accessIndicator
-        }
+                # Display with color coding
+                Write-Host "$treePrefix$directoryName - " -NoNewline
+                Write-Host $sizeFormatted -ForegroundColor $sizeColor -NoNewline
+                Write-Host $accessIndicator
+            }
         
-        return $totalSize
+            return $totalSize
+        }
+        catch [System.UnauthorizedAccessException] {
+            $RestrictedDirs.Value++
+            # Quiet operation by default - no warning for cleaner output
+            return 0
+        }
+        catch {
+            # Quiet operation by default - no error messages for cleaner output
+            return 0
+        }
     }
-    catch [System.UnauthorizedAccessException] {
-        $RestrictedDirs.Value++
-        # Quiet operation by default - no warning for cleaner output
-        return 0
-    }
-    catch {
-        # Quiet operation by default - no error messages for cleaner output
-        return 0
-    }
-}
 
-function Initialize-ProgressIndicator {
-    <#
+    function Initialize-ProgressIndicator {
+        <#
     .SYNOPSIS
         Initializes the progress indicator for directory analysis.
     
@@ -359,14 +390,14 @@ function Initialize-ProgressIndicator {
         analysis is in progress. Uses a global variable to track state.
     #>
     
-    $Global:ProgressCounter = 0
-    $Global:ProgressChars = @('|', '/', '-', '\')
-    Write-Host "Analyzing directories " -NoNewline
-    Write-Host "|" -NoNewline  # Initial character
-}
+        $Global:ProgressCounter = 0
+        $Global:ProgressChars = @('|', '/', '-', '\')
+        Write-Host "Analyzing directories " -NoNewline
+        Write-Host "|" -NoNewline  # Initial character
+    }
 
-function Update-ProgressIndicator {
-    <#
+    function Update-ProgressIndicator {
+        <#
     .SYNOPSIS
         Updates the rotating cursor progress indicator.
     
@@ -375,16 +406,16 @@ function Update-ProgressIndicator {
         Call this function periodically during long-running operations.
     #>
     
-    if ($Global:ProgressCounter -ne $null) {
-        # Move cursor back one position, write new character, then back again
-        Write-Host "`b" -NoNewline  # Backspace
-        $Global:ProgressCounter++
-        Write-Host "$($Global:ProgressChars[$Global:ProgressCounter % 4])" -NoNewline
+        if ($Global:ProgressCounter -ne $null) {
+            # Move cursor back one position, write new character, then back again
+            Write-Host "`b" -NoNewline  # Backspace
+            $Global:ProgressCounter++
+            Write-Host "$($Global:ProgressChars[$Global:ProgressCounter % 4])" -NoNewline
+        }
     }
-}
 
-function Complete-ProgressIndicator {
-    <#
+    function Complete-ProgressIndicator {
+        <#
     .SYNOPSIS
         Completes the progress indicator and cleans up the display.
     
@@ -393,16 +424,16 @@ function Complete-ProgressIndicator {
         Cleans up global progress variables.
     #>
     
-    if ($Global:ProgressCounter -ne $null) {
-        Write-Host "`b" -NoNewline  # Erase the spinner
-        Write-Host "Complete!" -ForegroundColor Green
-        Remove-Variable -Name ProgressCounter -Scope Global -ErrorAction SilentlyContinue
-        Remove-Variable -Name ProgressChars -Scope Global -ErrorAction SilentlyContinue
+        if ($Global:ProgressCounter -ne $null) {
+            Write-Host "`b" -NoNewline  # Erase the spinner
+            Write-Host "Complete!" -ForegroundColor Green
+            Remove-Variable -Name ProgressCounter -Scope Global -ErrorAction SilentlyContinue
+            Remove-Variable -Name ProgressChars -Scope Global -ErrorAction SilentlyContinue
+        }
     }
-}
 
-function Get-SizeColor {
-    <#
+    function Get-SizeColor {
+        <#
     .SYNOPSIS
         Determines the appropriate color for displaying directory sizes based on size thresholds.
     
@@ -432,27 +463,27 @@ function Get-SizeColor {
         - Yellow: 1GB to 5GB (medium-large)
         - White: Under 1GB (normal)
     #>
-    param(
-        [Parameter(Mandatory = $true)]
-        [long]$Size
-    )
+        param(
+            [Parameter(Mandatory = $true)]
+            [long]$Size
+        )
     
-    if ($Size -ge 10GB) {
-        return "Red"        # Very large directories (>10GB)
+        if ($Size -ge 10GB) {
+            return "Red"        # Very large directories (>10GB)
+        }
+        elseif ($Size -ge 5GB) {
+            return "Magenta"    # Large directories (5-10GB)
+        }
+        elseif ($Size -ge 1GB) {
+            return "Yellow"     # Medium-large directories (1-5GB)
+        }
+        else {
+            return "White"      # Normal directories (<1GB)
+        }
     }
-    elseif ($Size -ge 5GB) {
-        return "Magenta"    # Large directories (5-10GB)
-    }
-    elseif ($Size -ge 1GB) {
-        return "Yellow"     # Medium-large directories (1-5GB)
-    }
-    else {
-        return "White"      # Normal directories (<1GB)
-    }
-}
 
-function Format-Size {
-    <#
+    function Format-Size {
+        <#
     .SYNOPSIS
         Converts byte values to human-readable size format.
     
@@ -490,82 +521,82 @@ function Format-Size {
         - Shows exact byte count for values under 1KB
         - Supports sizes up to terabytes
     #>
-    param(
-        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
-        [long]$Size
-    )
+        param(
+            [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+            [long]$Size
+        )
     
-    if ($Size -ge 1TB) { return "{0:N2} TB" -f ($Size / 1TB) }
-    elseif ($Size -ge 1GB) { return "{0:N2} GB" -f ($Size / 1GB) }
-    elseif ($Size -ge 1MB) { return "{0:N2} MB" -f ($Size / 1MB) }
-    elseif ($Size -ge 1KB) { return "{0:N2} KB" -f ($Size / 1KB) }
-    else { return "$Size Bytes" }
-}
-
-# Set depth description based on parameter
-$DepthDescription = if ($Depth -eq 0) { "Unlimited" } elseif ($Depth -eq 1) { "Current directory only" } else { "$Depth levels" }
-
-# Check administrator privileges
-$isAdmin = Test-IsAdministrator
-
-if ($RequireAdmin -and -not $isAdmin) {
-    Write-Host "Error: Administrator privileges required but not detected." -ForegroundColor Red
-    Write-Host "Please run PowerShell as Administrator and try again." -ForegroundColor Yellow
-    Write-Host "Right-click PowerShell and select 'Run as Administrator'" -ForegroundColor Gray
-    exit 1
-}
-
-# Validate path
-if (-not (Test-Path $Path)) {
-    Write-Error "Path '$Path' does not exist."
-    exit 1
-}
-
-# Display header information
-Write-Host "Directory Size Analysis" -ForegroundColor Cyan
-Write-Host "======================" -ForegroundColor Cyan
-Write-Host "Path: $Path"
-Write-Host "Analysis Depth: $DepthDescription"
-Write-Host "Administrator: $isAdmin"
-if (-not $isAdmin) {
-    Write-Host "Note: Some directories may require administrator privileges to access." -ForegroundColor Yellow
-}
-Write-Host ""
-
-# Initialize progress indicator
-Initialize-ProgressIndicator
-
-# Initialize counter for restricted directories
-$restrictedDirCount = 0
-
-$totalSize = Get-DirectorySize -DirectoryPath $Path -MaxDepth 0 -DisplayDepth $Depth -RestrictedDirs ([ref]$restrictedDirCount)
-
-# Complete progress indicator
-Complete-ProgressIndicator
-
-$totalFormatted = Format-Size $totalSize
-$totalColor = Get-SizeColor $totalSize
-
-Write-Host ""
-Write-Host "Total Size: " -NoNewline
-Write-Host $totalFormatted -ForegroundColor $totalColor
-
-if ($restrictedDirCount -gt 0) {
-    Write-Host "Restricted Directories: $restrictedDirCount" -ForegroundColor Yellow
-    Write-Host "Note: [!] indicates directories with access restrictions" -ForegroundColor Gray
-    
-    if (-not $isAdmin) {
-        Write-Host "Tip: Run with -RequireAdmin to ensure administrator privileges" -ForegroundColor Cyan
+        if ($Size -ge 1TB) { return "{0:N2} TB" -f ($Size / 1TB) }
+        elseif ($Size -ge 1GB) { return "{0:N2} GB" -f ($Size / 1GB) }
+        elseif ($Size -ge 1MB) { return "{0:N2} MB" -f ($Size / 1MB) }
+        elseif ($Size -ge 1KB) { return "{0:N2} KB" -f ($Size / 1KB) }
+        else { return "$Size Bytes" }
     }
-}
 
-# Display color legend
-Write-Host ""
-Write-Host "Size Color Legend:" -ForegroundColor Gray
-Write-Host "  " -NoNewline
-Write-Host "Red" -ForegroundColor Red -NoNewline
-Write-Host " = Very Large (>10GB)  " -NoNewline -ForegroundColor Gray
-Write-Host "Magenta" -ForegroundColor Magenta -NoNewline
-Write-Host " = Large (5-10GB)  " -NoNewline -ForegroundColor Gray
-Write-Host "Yellow" -ForegroundColor Yellow -NoNewline
-Write-Host " = Medium (1-5GB)" -ForegroundColor Gray
+    # Set depth description based on parameter
+    $DepthDescription = if ($Depth -eq 0) { "Unlimited" } elseif ($Depth -eq 1) { "Current directory only" } else { "$Depth levels" }
+
+    # Check administrator privileges
+    $isAdmin = Test-IsAdministrator
+
+    if ($RequireAdmin -and -not $isAdmin) {
+        Write-Host "Error: Administrator privileges required but not detected." -ForegroundColor Red
+        Write-Host "Please run PowerShell as Administrator and try again." -ForegroundColor Yellow
+        Write-Host "Right-click PowerShell and select 'Run as Administrator'" -ForegroundColor Gray
+        exit 1
+    }
+
+    # Validate path
+    if (-not (Test-Path $Path)) {
+        Write-Error "Path '$Path' does not exist."
+        exit 1
+    }
+
+    # Display header information
+    Write-Host "Directory Size Analysis" -ForegroundColor Cyan
+    Write-Host "======================" -ForegroundColor Cyan
+    Write-Host "Path: $Path"
+    Write-Host "Analysis Depth: $DepthDescription"
+    Write-Host "Administrator: $isAdmin"
+    if (-not $isAdmin) {
+        Write-Host "Note: Some directories may require administrator privileges to access." -ForegroundColor Yellow
+    }
+    Write-Host ""
+
+    # Initialize progress indicator
+    Initialize-ProgressIndicator
+
+    # Initialize counter for restricted directories
+    $restrictedDirCount = 0
+
+    $totalSize = Get-DirectorySize -DirectoryPath $Path -MaxDepth 0 -DisplayDepth $Depth -RestrictedDirs ([ref]$restrictedDirCount) -FastMode $FastMode
+
+    # Complete progress indicator
+    Complete-ProgressIndicator
+
+    $totalFormatted = Format-Size $totalSize
+    $totalColor = Get-SizeColor $totalSize
+
+    Write-Host ""
+    Write-Host "Total Size: " -NoNewline
+    Write-Host $totalFormatted -ForegroundColor $totalColor
+
+    if ($restrictedDirCount -gt 0) {
+        Write-Host "Restricted Directories: $restrictedDirCount" -ForegroundColor Yellow
+        Write-Host "Note: [!] indicates directories with access restrictions" -ForegroundColor Gray
+    
+        if (-not $isAdmin) {
+            Write-Host "Tip: Run with -RequireAdmin to ensure administrator privileges" -ForegroundColor Cyan
+        }
+    }
+
+    # Display color legend
+    Write-Host ""
+    Write-Host "Size Color Legend:" -ForegroundColor Gray
+    Write-Host "  " -NoNewline
+    Write-Host "Red" -ForegroundColor Red -NoNewline
+    Write-Host " = Very Large (>10GB)  " -NoNewline -ForegroundColor Gray
+    Write-Host "Magenta" -ForegroundColor Magenta -NoNewline
+    Write-Host " = Large (5-10GB)  " -NoNewline -ForegroundColor Gray
+    Write-Host "Yellow" -ForegroundColor Yellow -NoNewline
+    Write-Host " = Medium (1-5GB)" -ForegroundColor Gray

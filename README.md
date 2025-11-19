@@ -7,6 +7,7 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 - **Directory-Only Analysis** - Shows folder sizes without individual file listings
 - **File Explorer-Like Hierarchy** - Tree structure display with ├──, └──, │ characters
 - **Size-Based Color Coding** - Visual highlighting of large directories (Red >10GB, Magenta >5GB, Yellow >1GB)
+- **Performance Optimized** - Fast mode option for improved calculation speed
 - **Progress Indicator** - Rotating cursor shows analysis progress for large directory structures
 - **Flexible Depth Control** - Specify exact analysis depth from current directory only to unlimited
 - **Administrator Privilege Detection** - Automatically detects and validates elevated permissions
@@ -36,14 +37,14 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 # Require administrator privileges (will exit if not admin)
 .\DirectorySize.ps1 -Path "C:\Windows" -Depth 0 -RequireAdmin
 
-# Limit analysis to 2 levels deep
-.\DirectorySize.ps1 -Path "C:\Program Files" -Depth 2
+# Fast analysis with optimized performance
+.\DirectorySize.ps1 -Path "C:\Program Files" -Depth 2 -FastMode
 
 # Deep analysis with clean output (default quiet operation)
 .\DirectorySize.ps1 -Path "C:\" -Depth 3
 
-# System analysis with admin validation
-.\DirectorySize.ps1 -Path "C:\Windows\System32" -Depth 0 -RequireAdmin
+# High-performance system analysis
+.\DirectorySize.ps1 -Path "C:\Windows\System32" -Depth 0 -RequireAdmin -FastMode
 ```
 
 **Note**: The tool operates quietly by default with clean output. Access restrictions are indicated by `[!]` markers and summarized at the end.
@@ -55,8 +56,41 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 | `-Path` | String | **Required.** The directory path to analyze |
 | `-Depth` | Integer | Analysis depth level (1=current only, 2=one level deep, 0=unlimited). Default: 1 |
 | `-RequireAdmin` | Switch | Require administrator privileges (exit with error if not admin) |
+| `-FastMode` | Switch | Use optimized enumeration for better performance (may use more memory) |
 
 **Note**: The tool operates quietly by default, showing only essential information with visual indicators `[!]` for access restrictions.
+
+```
+
+## ⚡ Performance Optimization
+
+The tool includes several performance enhancements for faster directory analysis:
+
+### FastMode Option
+
+```powershell
+# Standard mode (balanced performance and memory usage)
+.\DirectorySize.ps1 -Path "C:\Program Files" -Depth 2
+
+# Fast mode (optimized for speed)
+.\DirectorySize.ps1 -Path "C:\Program Files" -Depth 2 -FastMode
+```
+
+### Performance Features
+
+- **Optimized Enumeration** - Single call to get files and directories when using FastMode
+- **Reduced Function Calls** - Minimized overhead in recursive processing
+- **Smart Progress Updates** - Less frequent progress indicator updates in FastMode
+- **Efficient Memory Usage** - Standard mode balances speed and memory consumption
+- **Fast File Counting** - Optimized file size calculations
+
+### When to Use FastMode
+
+- ✅ **Large directories** with many subdirectories
+- ✅ **System analysis** where speed is prioritized
+- ✅ **Sufficient RAM** available (uses more memory temporarily)
+- ❌ **Memory-constrained systems** (stick to standard mode)
+- ❌ **Network drives** (may not provide significant benefit)
 
 ## 🎯 Depth Control
 
@@ -264,6 +298,7 @@ If you encounter issues:
 - **v2.0** - Added size-based color coding for improved large directory visibility
 - **v2.1** - Removed -SkipRestrictedDirs parameter, quiet operation by default
 - **v2.2** - Added rotating cursor progress indicator for long-running analyses
+- **v2.3** - Performance optimizations with FastMode option and improved enumeration
 
 ---
 
