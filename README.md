@@ -9,7 +9,6 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 - **File Explorer-Like Hierarchy** - Tree structure display with ├──, └──, │ characters
 - **Size-Based Color Coding** - Visual highlighting of large directories (Red >10GB, Magenta >5GB, Yellow >1GB)
 - **Performance Optimized** - Fast mode option for improved calculation speed
-- **Progress Indicator** - Rotating cursor shows analysis progress for large directory structures
 - **Flexible Depth Control** - Specify exact analysis depth from current directory only to unlimited
 - **Administrator Privilege Detection** - Automatically detects and validates elevated permissions
 - **Clean Output** - Quiet operation by default with visual indicators for access issues
