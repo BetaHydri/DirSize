@@ -73,7 +73,10 @@ param(
     [switch]$RequireAdmin,
     
     [Parameter(HelpMessage = "Use faster enumeration (may use more memory for large directories)")]
-    [switch]$FastMode
+    [switch]$FastMode,
+
+    [Parameter(HelpMessage = "Save output tree to a UTF-8 text file")]
+    [string]$SaveToFile
 )
 
 function Test-IsAdministrator {
@@ -328,10 +331,19 @@ function Get-DirectorySize {
             $tempSize = Format-Size $fileSize
             $tempColor = Get-SizeColor $fileSize
             
-            # Display the directory entry immediately
+            # Create display text
+            $displayText = "$treePrefix$directoryName - $tempSize"
+            if ($hasAccessIssues) { $displayText += " [!]" }
+            
+            # Display the directory entry
             Write-Host "$treePrefix$directoryName - " -NoNewline
             Write-Host $tempSize -ForegroundColor $tempColor -NoNewline
             if ($hasAccessIssues) { Write-Host " [!]" } else { Write-Host "" }
+            
+            # Capture output for file saving if requested
+            if ($SaveToFile -and $script:outputLines) {
+                $script:outputLines += $displayText
+            }
         }
         
         # Always process ALL subdirectories for accurate size calculation
@@ -585,6 +597,20 @@ if (-not $isAdmin) {
 }
 Write-Host ""
 
+# Initialize output capture if saving to file
+$script:outputLines = @()
+if ($SaveToFile) {
+    $script:outputLines += "Directory Size Analysis"
+    $script:outputLines += "======================"
+    $script:outputLines += "Path: $Path"
+    $script:outputLines += "Analysis Depth: $DepthDescription"
+    $script:outputLines += "Administrator: $isAdmin"
+    if (-not $isAdmin) {
+        $script:outputLines += "Note: Some directories may require administrator privileges to access."
+    }
+    $script:outputLines += ""
+}
+
 # Start progress indicator for calculation phase
 Initialize-ProgressIndicator
 
@@ -628,3 +654,40 @@ Write-Host "Magenta" -ForegroundColor Magenta -NoNewline
 Write-Host " = Large (5-10GB)  " -NoNewline -ForegroundColor Gray
 Write-Host "Yellow" -ForegroundColor Yellow -NoNewline
 Write-Host " = Medium (1-5GB)" -ForegroundColor Gray
+
+# Save output to file if requested
+if ($SaveToFile) {
+    try {
+        # Add final sections to output
+        $script:outputLines += ""
+        $script:outputLines += "Total Size: $(Format-Size $totalSize)"
+        
+        if ($restrictedDirCount -gt 0) {
+            $script:outputLines += "Restricted Directories: $restrictedDirCount"
+            $script:outputLines += "Note: [!] indicates directories with access restrictions"
+            
+            if (-not $isAdmin) {
+                $script:outputLines += "Tip: Run with -RequireAdmin to ensure administrator privileges"
+            }
+        }
+        
+        $script:outputLines += ""
+        $script:outputLines += "Size Color Legend:"
+        $script:outputLines += "  Red = Very Large (>10GB)  Magenta = Large (5-10GB)  Yellow = Medium (1-5GB)"
+        
+        # Ensure the directory exists
+        $fileDir = Split-Path $SaveToFile -Parent
+        if ($fileDir -and !(Test-Path $fileDir)) {
+            New-Item -ItemType Directory -Path $fileDir -Force | Out-Null
+        }
+        
+        # Save with UTF-8 encoding
+        $script:outputLines | Out-File -FilePath $SaveToFile -Encoding UTF8 -Force
+        Write-Host ""
+        Write-Host "Output saved to: $SaveToFile" -ForegroundColor Green
+    }
+    catch {
+        Write-Host ""
+        Write-Host "Error saving to file: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}

@@ -40,11 +40,14 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 # Fast analysis with optimized performance
 .\DirectorySize.ps1 -Path "C:\Program Files" -Depth 2 -FastMode
 
+# Save output to a text file
+.\DirectorySize.ps1 -Path "C:\Program Files" -Depth 2 -SaveToFile "analysis.txt"
+
 # Deep analysis with clean output (default quiet operation)
 .\DirectorySize.ps1 -Path "C:\" -Depth 3
 
-# High-performance system analysis
-.\DirectorySize.ps1 -Path "C:\Windows\System32" -Depth 0 -RequireAdmin -FastMode
+# High-performance system analysis with file output
+.\DirectorySize.ps1 -Path "C:\Windows\System32" -Depth 0 -RequireAdmin -FastMode -SaveToFile "system_analysis.txt"
 ```
 
 **Note**: The tool operates quietly by default with clean output. Access restrictions are indicated by `[!]` markers and summarized at the end.
@@ -57,6 +60,7 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 | `-Depth` | Integer | Analysis depth level (1=current only, 2=one level deep, 0=unlimited). Default: 1 |
 | `-RequireAdmin` | Switch | Require administrator privileges (exit with error if not admin) |
 | `-FastMode` | Switch | Use optimized enumeration for better performance (may use more memory) |
+| `-SaveToFile` | String | Save the complete directory tree output to a UTF-8 text file |
 
 **Note**: The tool operates quietly by default, showing only essential information with visual indicators `[!]` for access restrictions.
 
