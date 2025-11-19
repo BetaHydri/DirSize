@@ -7,6 +7,7 @@ A powerful PowerShell script for analyzing directory sizes with administrator pr
 - **Directory-Only Analysis** - Shows folder sizes without individual file listings
 - **File Explorer-Like Hierarchy** - Tree structure display with ├──, └──, │ characters
 - **Size-Based Color Coding** - Visual highlighting of large directories (Red >10GB, Magenta >5GB, Yellow >1GB)
+- **Progress Indicator** - Rotating cursor shows analysis progress for large directory structures
 - **Flexible Depth Control** - Specify exact analysis depth from current directory only to unlimited
 - **Administrator Privilege Detection** - Automatically detects and validates elevated permissions
 - **Clean Output** - Quiet operation by default with visual indicators for access issues
@@ -112,6 +113,8 @@ Path: C:\Program Files
 Analysis Depth: 3 levels
 Administrator: True
 
+Analyzing directories Complete!
+
 Program Files - 15.2 GB                    [Red - Very Large]
 ├── Adobe - 2.34 GB                      [Yellow - Medium]
 │   ├── Acrobat DC - 1.8 GB               [Yellow - Medium]
@@ -131,6 +134,13 @@ Note: [!] indicates directories with access restrictions
 Size Color Legend:
   Red = Very Large (>10GB)  Magenta = Large (5-10GB)  Yellow = Medium (1-5GB)
 ```
+
+### Progress Indication
+
+- **Rotating Cursor** - Shows | / - \\ animation during analysis
+- **Smart Updates** - Updates every few directories to avoid flickering
+- **Completion Message** - Clear "Complete!" when analysis finishes
+- **Non-Blocking** - Doesn't slow down the analysis process
 
 ### Color Coding System
 
@@ -253,6 +263,7 @@ If you encounter issues:
 - **v1.9** - Removed auto-elevation, simplified to manual admin privilege requirement
 - **v2.0** - Added size-based color coding for improved large directory visibility
 - **v2.1** - Removed -SkipRestrictedDirs parameter, quiet operation by default
+- **v2.2** - Added rotating cursor progress indicator for long-running analyses
 
 ---
 

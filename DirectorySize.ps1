@@ -288,6 +288,11 @@ function Get-DirectorySize {
                 $dir = $directories[$i]
                 $isLastDir = ($i -eq ($dirCount - 1))
                 
+                # Update progress indicator every few directories
+                if ($Level -le 2 -and ($i % 3 -eq 0)) {
+                    Update-ProgressIndicator
+                }
+                
                 try {
                     # Prepare parent prefixes for next level (only if displaying this level)
                     $newParentPrefixes = $ParentPrefixes + @(
@@ -315,8 +320,8 @@ function Get-DirectorySize {
             # Format size for display
             $sizeFormatted = Format-Size $totalSize
             
-            # Generate tree prefix
-            $treePrefix = Get-TreePrefix -Level $Level -IsLast $IsLast -ParentPrefixes $ParentPrefixes
+            # Generate tree prefix (no prefix for root level)
+            $treePrefix = if ($Level -eq 0) { "" } else { Get-TreePrefix -Level $Level -IsLast $IsLast -ParentPrefixes $ParentPrefixes }
             
             # Get color based on directory size
             $sizeColor = Get-SizeColor $totalSize
@@ -341,6 +346,56 @@ function Get-DirectorySize {
     catch {
         # Quiet operation by default - no error messages for cleaner output
         return 0
+    }
+}
+
+function Initialize-ProgressIndicator {
+    <#
+    .SYNOPSIS
+        Initializes the progress indicator for directory analysis.
+    
+    .DESCRIPTION
+        Sets up a rotating cursor progress indicator to show that directory
+        analysis is in progress. Uses a global variable to track state.
+    #>
+    
+    $Global:ProgressCounter = 0
+    $Global:ProgressChars = @('|', '/', '-', '\\')
+    Write-Host "Analyzing directories " -NoNewline
+}
+
+function Update-ProgressIndicator {
+    <#
+    .SYNOPSIS
+        Updates the rotating cursor progress indicator.
+    
+    .DESCRIPTION
+        Shows a rotating cursor to indicate ongoing directory analysis.
+        Call this function periodically during long-running operations.
+    #>
+    
+    if ($Global:ProgressCounter -ne $null) {
+        # Erase previous character and show new one
+        Write-Host "`b$($Global:ProgressChars[$Global:ProgressCounter % 4])" -NoNewline
+        $Global:ProgressCounter++
+    }
+}
+
+function Complete-ProgressIndicator {
+    <#
+    .SYNOPSIS
+        Completes the progress indicator and cleans up the display.
+    
+    .DESCRIPTION
+        Removes the rotating cursor and shows completion message.
+        Cleans up global progress variables.
+    #>
+    
+    if ($Global:ProgressCounter -ne $null) {
+        Write-Host "`b " -NoNewline  # Erase the cursor
+        Write-Host "Complete!" -ForegroundColor Green
+        Remove-Variable -Name ProgressCounter -Scope Global -ErrorAction SilentlyContinue
+        Remove-Variable -Name ProgressChars -Scope Global -ErrorAction SilentlyContinue
     }
 }
 
@@ -475,10 +530,17 @@ if (-not $isAdmin) {
 }
 Write-Host ""
 
+# Initialize progress indicator
+Initialize-ProgressIndicator
+
 # Initialize counter for restricted directories
 $restrictedDirCount = 0
 
 $totalSize = Get-DirectorySize -DirectoryPath $Path -MaxDepth 0 -DisplayDepth $Depth -RestrictedDirs ([ref]$restrictedDirCount)
+
+# Complete progress indicator
+Complete-ProgressIndicator
+
 $totalFormatted = Format-Size $totalSize
 $totalColor = Get-SizeColor $totalSize
 
