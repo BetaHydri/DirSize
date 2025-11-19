@@ -1,9 +1,10 @@
 # DirectorySize PowerShell Tool
 
-A powerful PowerShell script for analyzing directory sizes with administrator privilege handling and comprehensive error management.
+A powerful PowerShell script for analyzing directory sizes with administrator privilege handling and comprehensive error management. **This tool calculates the total file sizes within each directory** by scanning all files and aggregating their sizes per folder.
 
 ## 🌟 Features
 
+- **Directory Size Calculation** - Calculates total file sizes per directory (aggregates all files within each folder)
 - **Directory-Only Analysis** - Shows folder sizes without individual file listings
 - **File Explorer-Like Hierarchy** - Tree structure display with ├──, └──, │ characters
 - **Size-Based Color Coding** - Visual highlighting of large directories (Red >10GB, Magenta >5GB, Yellow >1GB)
@@ -98,17 +99,24 @@ The tool includes several performance enhancements for faster directory analysis
 
 ## 🎯 Depth Control
 
-The `-Depth` parameter controls **display depth** while always calculating complete directory sizes:
+The `-Depth` parameter controls **display depth** while always calculating complete directory sizes by **scanning all files within each directory**:
 
-- **`-Depth 1`** (Default): Shows only root directory total (calculates all subdirectories for accuracy)
-- **`-Depth 2`**: Shows root + one level of subdirectories (with accurate totals including deeper levels)
-- **`-Depth 3`**: Shows root + two levels of subdirectories (with complete size calculations)
+- **`-Depth 1`** (Default): Shows only root directory total (calculates all files in all subdirectories for accuracy)
+- **`-Depth 2`**: Shows root + one level of subdirectories (with accurate totals including all files in deeper levels)
+- **`-Depth 3`**: Shows root + two levels of subdirectories (with complete file size calculations from all subdirectories)
 - **`-Depth 0`**: Shows complete directory tree (unlimited display and calculation)
 
-### Key Feature: Accurate Totals
+### Key Feature: Complete File Size Aggregation
 
-📊 **The tool always calculates ALL subdirectories** for accurate size totals, regardless of display depth.
-This means a folder shown at depth 2 includes the sizes of ALL its subdirectories, even those not displayed.
+📊 **The tool scans ALL files in ALL subdirectories** for accurate size totals, regardless of display depth.
+This means a folder shown at depth 2 includes the total sizes of ALL files contained within it and all its subdirectories, even those directories not displayed.
+
+### How File Sizes Are Calculated
+
+1. **File Enumeration** - Scans all files in each directory
+2. **Size Aggregation** - Sums up individual file sizes per directory
+3. **Recursive Totaling** - Includes subdirectory totals in parent directory sizes
+4. **Display Formatting** - Shows human-readable sizes (KB, MB, GB, TB)
 
 ### Depth Examples
 
