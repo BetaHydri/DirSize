@@ -156,9 +156,9 @@ function Start-ElevatedScript {
     
     try {
         $argumentString = $Arguments -join ' '
-        # Add pause command to prevent window from closing in elevated mode
-        $pauseCommand = "; Write-Host ''; Write-Host 'Press any key to close this window...' -ForegroundColor Yellow; Read-Host"
-        Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command \"& '$ScriptPath' $argumentString$pauseCommand\"" -Verb RunAs
+        # Construct the complete command with pause
+        $fullCommand = "& `"$ScriptPath`" $argumentString; Write-Host ''; Write-Host 'Press any key to close this window...' -ForegroundColor Yellow; `$null = Read-Host"
+        Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $fullCommand -Verb RunAs
         exit
     }
     catch {
