@@ -146,8 +146,8 @@ function Get-TreePrefix {
         Generates tree-like prefix characters for hierarchical display.
     
     .DESCRIPTION
-        Creates visual tree characters (├──, └──, │) similar to File Explorer
-        to show directory hierarchy relationships clearly.
+        Creates visual tree characters (branch, end, vertical) similar to File Explorer
+        to show directory hierarchy relationships clearly. Compatible with PowerShell 5.1+.
     
     .PARAMETER Level
         The current depth level in the directory tree.
@@ -164,7 +164,7 @@ function Get-TreePrefix {
     
     .EXAMPLE
         Get-TreePrefix -Level 1 -IsLast $false -ParentPrefixes @()
-        Returns "├── " for a non-last item at level 1.
+        Returns branch characters for a non-last item at level 1.
     #>
     param(
         [int]$Level,
@@ -184,16 +184,16 @@ function Get-TreePrefix {
             $prefix += $ParentPrefixes[$i]
         }
         else {
-            $prefix += "    "
+            $prefix += [char]0x2502 + "   "
         }
     }
     
     # Add current level prefix
     if ($IsLast) {
-        $prefix += "└── "
+        $prefix += [char]0x2514 + [char]0x2500 + [char]0x2500 + " "
     }
     else {
-        $prefix += "├── "
+        $prefix += [char]0x251C + [char]0x2500 + [char]0x2500 + " "
     }
     
     return $prefix
@@ -235,7 +235,7 @@ function Get-DirectorySize {
     
     .PARAMETER IsLast
         Whether this directory is the last item at its level.
-        Used for proper tree character selection (├── vs └──).
+        Used for proper tree character selection (branch vs end).
     
     .OUTPUTS
         System.Int64
@@ -371,7 +371,7 @@ function Get-DirectorySize {
                     }
                     else {
                         # At non-root levels, use the current directory's IsLast status
-                        if ($IsLast) { "    " } else { "│   " }
+                        if ($IsLast) { "    " } else { [char]0x2502 + "   " }
                     }
                     
                     $newParentPrefixes = if ($Level -eq 0) {

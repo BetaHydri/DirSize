@@ -2,11 +2,13 @@
 
 A powerful PowerShell script for analyzing directory sizes with administrator privilege handling and comprehensive error management. **This tool calculates the total file sizes within each directory** by scanning all files and aggregating their sizes per folder.
 
+**Requirements:** PowerShell 5.1+ (Windows PowerShell) or PowerShell 7+ (PowerShell Core)
+
 ## 🌟 Features
 
 - **Directory Size Calculation** - Calculates total file sizes per directory (aggregates all files within each folder)
 - **Directory-Only Analysis** - Shows folder sizes without individual file listings
-- **File Explorer-Like Hierarchy** - Tree structure display with ├──, └──, │ characters
+- **File Explorer-Like Hierarchy** - Tree structure display with box-drawing characters (compatible with PowerShell 5.1+)
 - **Size-Based Color Coding** - Visual highlighting of large directories (Red >10GB, Magenta >5GB, Yellow >1GB)
 - **Performance Optimized** - Fast mode option for improved calculation speed
 - **Flexible Depth Control** - Specify exact analysis depth from current directory only to unlimited
@@ -356,6 +358,23 @@ If you encounter issues:
 - **v2.1** - Removed -SkipRestrictedDirs parameter, quiet operation by default
 - **v2.2** - Added rotating cursor progress indicator for long-running analyses
 - **v2.3** - Performance optimizations with FastMode option and improved enumeration
+- **v2.4** - Added UTF-8 file output capability with SaveToFile parameter
+- **v2.5** - PowerShell 5.1 compatibility fixes for Unicode tree characters
+
+## 🔧 Compatibility
+
+### PowerShell Version Support
+- **PowerShell 5.1** (Windows PowerShell) - ✅ Fully supported
+- **PowerShell 7+** (PowerShell Core) - ✅ Fully supported
+- **PowerShell ISE** - ✅ Compatible (with limited color support)
+
+### Platform Support
+- **Windows 10/11** - Primary target platform
+- **Windows Server 2016+** - Fully supported  
+- **Windows 8.1** - Compatible (PowerShell 5.1 required)
+
+### Unicode Character Handling
+The tool uses Unicode box-drawing characters for tree display, implemented with character codes for maximum compatibility across PowerShell versions.
 
 ---
 
