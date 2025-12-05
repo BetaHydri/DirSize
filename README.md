@@ -1,6 +1,10 @@
-# DirectorySize PowerShell Tool
+# DirSize - PowerShell Directory Size Analyzer
 
-A powerful PowerShell script for analyzing directory sizes with administrator privilege handling and comprehensive error management. **This tool calculates the total file sizes within each directory** by scanning all files and aggregating their sizes per folder.
+[![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://github.com/PowerShell/PowerShell)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)](https://www.microsoft.com/windows)
+
+A powerful and efficient PowerShell script for analyzing directory sizes with visual tree display, administrator privilege handling, and comprehensive error management. **Calculate total file sizes within each directory** with color-coded output and File Explorer-like hierarchical visualization.
 
 **Requirements:** PowerShell 5.1+ (Windows PowerShell) or PowerShell 7+ (PowerShell Core)
 
